@@ -393,10 +393,9 @@
 <!-- HERO -->
 <div class="hero">
   <div class="hero-badge">🔥 v0.35 — now with cloud sync & auto-capture</div>
-  <h1>Your AI forgets.<br><em>infernoflow remembers.</em></h1>
+  <h1>Your AI can read your code.<br><em>infernoflow tells it everything your code doesn't say.</em></h1>
   <p class="hero-sub">
-    Persistent memory for AI coding sessions. Captures <strong>decisions, gotchas, and context</strong>
-    so your next session picks up exactly where you left off.
+    Persistent memory for AI coding sessions. Captures <strong>decisions, gotchas, and context</strong> — the stuff that lives in your head, not your codebase.
   </p>
   <div class="install-box" onclick="copyInstall()">
     <span class="prompt">$</span>
@@ -506,36 +505,48 @@
   <div class="section-inner">
     <div class="section-label">Pricing</div>
     <h2 class="section-title">Free to start.<br>Pro when you need more.</h2>
-    <p class="section-sub">The core CLI is open source and free forever. Pro features for teams and power users coming soon.</p>
-    <div class="pricing-grid">
+    <p class="section-sub">The core CLI is free forever. Pro unlocks cloud sync, AI-powered insights, and team memory.</p>
+    <div class="pricing-grid" style="max-width:900px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
       <div class="plan-card">
         <div class="plan-name">Free</div>
         <div class="plan-price">$0</div>
-        <div class="plan-desc">Everything you need for solo development. Open source, MIT licensed.</div>
+        <div class="plan-desc">For solo developers. Open source, MIT licensed, forever free.</div>
         <ul class="plan-features">
           <li>Unlimited local session memory</li>
           <li>All CLI commands (log, switch, recap, ask…)</li>
           <li>MCP server + all MCP tools</li>
           <li>Git hooks auto-capture</li>
           <li>VS Code extension</li>
-          <li>Cloud sync (GitHub Gist backend)</li>
         </ul>
         <a href="https://www.npmjs.com/package/infernoflow" target="_blank" class="plan-cta secondary">Install free →</a>
       </div>
       <div class="plan-card featured">
-        <div class="plan-badge">Coming soon</div>
+        <div class="plan-badge">🔥 First 100 users — 50% off forever</div>
         <div class="plan-name">Pro</div>
-        <div class="plan-price"><sup>$</sup>9<span>/mo</span></div>
-        <div class="plan-desc">For developers who live in their tools and want the full picture.</div>
+        <div class="plan-price"><sup>$</sup>6<span style="font-size:13px;color:var(--muted);text-decoration:line-through;margin-left:6px;">$12</span><span>/mo</span></div>
+        <div class="plan-desc">For developers who live in their tools. Lock in the founder rate while spots last.</div>
         <ul class="plan-features">
           <li>Everything in Free</li>
-          <li>Dedicated cloud sync (no Gist limits)</li>
-          <li>Team memory sharing</li>
+          <li>Dedicated cloud sync (no limits)</li>
           <li>AI-powered recap & insights</li>
+          <li>Predictive context injection</li>
           <li>Priority support</li>
-          <li>Early access to new features</li>
+          <li>Early access to all new features</li>
         </ul>
-        <button class="plan-cta primary" onclick="joinWaitlist()">Join waitlist →</button>
+        <button class="plan-cta primary" onclick="joinWaitlist()">Claim founder rate →</button>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Team</div>
+        <div class="plan-price"><sup>$</sup>29<span>/user/mo</span></div>
+        <div class="plan-desc">Shared memory across your team. One discovered gotcha saves everyone.</div>
+        <ul class="plan-features">
+          <li>Everything in Pro</li>
+          <li>Shared team memory & gotcha sync</li>
+          <li>Onboarding context for new hires</li>
+          <li>Admin dashboard</li>
+          <li>Team analytics</li>
+        </ul>
+        <button class="plan-cta secondary" onclick="joinWaitlist()">Join waitlist →</button>
       </div>
     </div>
   </div>
@@ -544,10 +555,10 @@
 <!-- CTA BANNER -->
 <div class="cta-banner">
   <h2>Stop re-explaining your codebase<br>to your AI every morning.</h2>
-  <p>infernoflow gives it memory that persists.</p>
+  <p>infernoflow gives it memory that persists. First 100 Pro users get <strong style="color:var(--orange);">50% off forever.</strong></p>
   <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
     <a href="https://www.npmjs.com/package/infernoflow" target="_blank" class="btn-primary">Install free in 60 seconds →</a>
-    <button onclick="joinWaitlist()" class="btn-secondary">Join Pro waitlist</button>
+    <button onclick="joinWaitlist()" class="btn-secondary">Claim founder rate →</button>
   </div>
 </div>
 
@@ -568,8 +579,9 @@
   <div style="background:#1a1a1f;border:1px solid #2a2a32;border-radius:20px;padding:40px;max-width:420px;width:100%;position:relative;">
     <button onclick="closeWaitlist()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#8b8a96;font-size:20px;cursor:pointer;">✕</button>
     <div style="font-size:28px;margin-bottom:12px;">🔥</div>
-    <h3 style="font-size:22px;font-weight:800;margin-bottom:8px;letter-spacing:-0.5px;">Join the Pro waitlist</h3>
-    <p style="font-size:14px;color:#8b8a96;margin-bottom:24px;line-height:1.6;">Be first to know when infernoflow Pro launches. No spam — one email when it's ready.</p>
+    <h3 style="font-size:22px;font-weight:800;margin-bottom:8px;letter-spacing:-0.5px;">Claim your founder rate</h3>
+    <p style="font-size:14px;color:#8b8a96;margin-bottom:8px;line-height:1.6;">First 100 users get <strong style="color:#f97316;">50% off Pro forever</strong> — $6/mo instead of $12/mo, locked in for life.</p>
+    <p style="font-size:13px;color:#8b8a96;margin-bottom:24px;">No spam — one email when Pro launches.</p>
     <div id="waitlist-form">
       <form onsubmit="submitWaitlist(event)" style="display:flex;flex-direction:column;gap:12px;">
         <input id="waitlist-email" type="email" required placeholder="your@email.com"
