@@ -568,6 +568,26 @@
   </div>
 </footer>
 
+<!-- WAITLIST MODAL -->
+<div id="waitlist-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#1a1a1f;border:1px solid #2a2a32;border-radius:20px;padding:40px;max-width:420px;width:100%;position:relative;">
+    <button onclick="closeWaitlist()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#8b8a96;font-size:20px;cursor:pointer;">✕</button>
+    <div style="font-size:28px;margin-bottom:12px;">🔥</div>
+    <h3 style="font-size:22px;font-weight:800;margin-bottom:8px;letter-spacing:-0.5px;">Join the Pro waitlist</h3>
+    <p style="font-size:14px;color:#8b8a96;margin-bottom:24px;line-height:1.6;">Be first to know when infernoflow Pro launches. No spam — one email when it's ready.</p>
+    <div id="waitlist-form">
+      <form onsubmit="submitWaitlist(event)" style="display:flex;flex-direction:column;gap:12px;">
+        <input id="waitlist-email" type="email" required placeholder="your@email.com"
+          style="background:#0d0d0f;border:1px solid #2a2a32;border-radius:10px;padding:12px 16px;color:#f1f0ee;font-size:15px;outline:none;font-family:inherit;" />
+        <button id="waitlist-btn" type="submit"
+          style="background:#f97316;color:white;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;">
+          Join waitlist →
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast">✓ Copied to clipboard</div>
 
@@ -587,7 +607,28 @@
   }
 
   function joinWaitlist() {
-    window.location.href = 'mailto:hello@infernoflow.dev?subject=infernoflow Pro waitlist&body=Hi Ron, I want to join the infernoflow Pro waitlist.';
+    document.getElementById('waitlist-overlay').style.display = 'flex';
+  }
+  function closeWaitlist() {
+    document.getElementById('waitlist-overlay').style.display = 'none';
+  }
+  async function submitWaitlist(e) {
+    e.preventDefault();
+    const email = document.getElementById('waitlist-email').value;
+    const btn = document.getElementById('waitlist-btn');
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+    try {
+      await fetch('https://formspree.io/f/maqarynd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ email, _subject: 'infernoflow Pro waitlist signup' })
+      });
+      document.getElementById('waitlist-form').innerHTML = '<p style="color:#f97316;font-size:16px;font-weight:600;">✓ You\'re on the list! We\'ll be in touch.</p>';
+    } catch {
+      btn.textContent = 'Join waitlist →';
+      btn.disabled = false;
+    }
   }
 </script>
 
