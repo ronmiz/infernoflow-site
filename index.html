@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>infernoflow — Persistent memory for AI coding sessions</title>
+  <meta name="description" content="infernoflow gives your AI coding assistant persistent memory. Captures decisions, gotchas, and context across sessions. Works with Copilot, Cursor, Claude, and Windsurf." />
+  <meta property="og:title" content="infernoflow — Persistent memory for AI coding sessions" />
+  <meta property="og:description" content="Your AI forgets everything when the session ends. infernoflow fixes that." />
+  <meta property="og:url" content="https://infernoflow.dev" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0d0f;
+      --bg2:       #131316;
+      --bg3:       #1a1a1f;
+      --border:    #2a2a32;
+      --orange:    #f97316;
+      --orange2:   #fb923c;
+      --amber:     #fbbf24;
+      --text:      #f1f0ee;
+      --muted:     #8b8a96;
+      --code-bg:   #1e1e24;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,13,15,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 18px; font-weight: 700; letter-spacing: -0.3px;
+    }
+    .nav-logo span { color: var(--orange); }
+    .nav-links { display: flex; align-items: center; gap: 24px; }
+    .nav-links a {
+      font-size: 14px; color: var(--muted);
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-gh {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      color: var(--text) !important;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .nav-gh:hover { border-color: var(--orange); background: rgba(249,115,22,0.06); }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: 860px; margin: 0 auto;
+      padding: 100px 24px 80px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(249,115,22,0.1);
+      border: 1px solid rgba(249,115,22,0.25);
+      border-radius: 100px;
+      padding: 4px 14px;
+      font-size: 13px; color: var(--orange2);
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--orange), var(--amber));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: clamp(17px, 2.5vw, 20px);
+      color: var(--muted);
+      max-width: 580px; margin: 0 auto 40px;
+      line-height: 1.55;
+    }
+    .hero-sub strong { color: var(--text); font-weight: 500; }
+    .install-box {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 15px;
+      margin-bottom: 32px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .install-box:hover { border-color: var(--orange); }
+    .install-box .prompt { color: var(--orange); }
+    .install-box .cmd { color: var(--text); }
+    .install-box .copy-btn {
+      background: var(--border);
+      border: none; border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px; color: var(--muted);
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+    .install-box .copy-btn:hover { background: var(--orange); color: white; }
+    .hero-ctas { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap-8px;
+      background: var(--orange);
+      color: white;
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-size: 15px; font-weight: 600;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-primary:hover { background: var(--orange2); transform: translateY(-1px); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-size: 15px; font-weight: 500;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--orange); background: rgba(249,115,22,0.05); }
+
+    /* ── WORKS WITH ── */
+    .works-with {
+      text-align: center;
+      padding: 40px 24px 60px;
+      border-top: 1px solid var(--border);
+    }
+    .works-with p {
+      font-size: 13px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+    .ides {
+      display: flex; align-items: center; justify-content: center;
+      gap: 32px; flex-wrap: wrap;
+    }
+    .ide-pill {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 8px 18px;
+      font-size: 14px; font-weight: 500;
+      color: var(--muted);
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .ide-pill:hover { border-color: var(--orange); color: var(--text); }
+
+    /* ── SECTION ── */
+    section { padding: 80px 24px; }
+    .section-inner { max-width: 1000px; margin: 0 auto; }
+    .section-label {
+      font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--orange);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 800; letter-spacing: -0.8px;
+      line-height: 1.15; margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 17px; color: var(--muted);
+      max-width: 520px; line-height: 1.6;
+      margin-bottom: 52px;
+    }
+
+    /* ── FEATURES GRID ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { border-color: var(--orange); transform: translateY(-2px); }
+    .feature-icon {
+      font-size: 28px; margin-bottom: 14px;
+    }
+    .feature-card h3 {
+      font-size: 17px; font-weight: 700;
+      margin-bottom: 8px; letter-spacing: -0.2px;
+    }
+    .feature-card p {
+      font-size: 14px; color: var(--muted); line-height: 1.6;
+    }
+
+    /* ── HOW IT WORKS ── */
+    .steps { display: flex; flex-direction: column; gap: 0; }
+    .step {
+      display: flex; gap: 24px; align-items: flex-start;
+      padding: 28px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      flex-shrink: 0;
+      width: 40px; height: 40px;
+      background: rgba(249,115,22,0.12);
+      border: 1px solid rgba(249,115,22,0.3);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700; color: var(--orange);
+    }
+    .step-body h3 {
+      font-size: 17px; font-weight: 700; margin-bottom: 6px;
+    }
+    .step-body p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .step-body code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 13px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      color: var(--orange2);
+    }
+
+    /* ── PRICING ── */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 700px;
+    }
+    .plan-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+    }
+    .plan-card.featured {
+      border-color: var(--orange);
+      background: linear-gradient(160deg, rgba(249,115,22,0.07) 0%, var(--bg2) 60%);
+    }
+    .plan-badge {
+      display: inline-block;
+      background: var(--orange);
+      color: white;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.8px;
+      padding: 3px 10px; border-radius: 100px;
+      margin-bottom: 16px;
+    }
+    .plan-name {
+      font-size: 20px; font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .plan-price {
+      font-size: 38px; font-weight: 800;
+      letter-spacing: -1px; line-height: 1;
+      margin: 12px 0 6px;
+    }
+    .plan-price sup { font-size: 20px; vertical-align: super; font-weight: 600; }
+    .plan-price span { font-size: 15px; color: var(--muted); font-weight: 400; }
+    .plan-desc { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .plan-features li {
+      font-size: 14px; display: flex; align-items: flex-start; gap: 10px;
+    }
+    .plan-features li::before {
+      content: "✓";
+      color: var(--orange); font-weight: 700;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .plan-cta {
+      display: block; width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 15px; font-weight: 600;
+      text-align: center;
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+    .plan-cta.primary {
+      background: var(--orange); color: white; border: none;
+    }
+    .plan-cta.primary:hover { background: var(--orange2); }
+    .plan-cta.secondary {
+      background: transparent;
+      border: 1px solid var(--border); color: var(--text);
+    }
+    .plan-cta.secondary:hover { border-color: var(--orange); background: rgba(249,115,22,0.05); }
+
+    /* ── CTA BANNER ── */
+    .cta-banner {
+      background: linear-gradient(135deg, rgba(249,115,22,0.12) 0%, rgba(251,191,36,0.06) 100%);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      padding: 80px 24px;
+    }
+    .cta-banner h2 {
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 800; letter-spacing: -0.8px;
+      margin-bottom: 12px;
+    }
+    .cta-banner p { font-size: 17px; color: var(--muted); margin-bottom: 36px; }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 40px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+    .footer-inner {
+      max-width: 1000px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-logo { font-size: 16px; font-weight: 700; }
+    .footer-logo span { color: var(--orange); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: 13px; color: var(--muted); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .nav-links .hide-mobile { display: none; }
+      .step { flex-direction: column; gap: 12px; }
+      .footer-inner { flex-direction: column; align-items: center; text-align: center; }
+    }
+
+    /* ── COPIED TOAST ── */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 10px 20px; border-radius: 10px;
+      font-size: 14px; color: var(--text);
+      transition: transform 0.25s ease;
+      pointer-events: none; z-index: 999;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">🔥 <span>inferno</span>flow</a>
+  <div class="nav-links">
+    <a href="#features" class="hide-mobile">Features</a>
+    <a href="#how-it-works" class="hide-mobile">How it works</a>
+    <a href="#pricing" class="hide-mobile">Pricing</a>
+    <a href="https://github.com/ronmiz/infernoflow" target="_blank" class="nav-gh">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">🔥 v0.35 — now with cloud sync & auto-capture</div>
+  <h1>Your AI forgets.<br><em>infernoflow remembers.</em></h1>
+  <p class="hero-sub">
+    Persistent memory for AI coding sessions. Captures <strong>decisions, gotchas, and context</strong>
+    so your next session picks up exactly where you left off.
+  </p>
+  <div class="install-box" onclick="copyInstall()">
+    <span class="prompt">$</span>
+    <span class="cmd">npm install -g infernoflow</span>
+    <button class="copy-btn" id="copyBtn">Copy</button>
+  </div>
+  <div class="hero-ctas">
+    <a href="https://github.com/ronmiz/infernoflow#readme" target="_blank" class="btn-primary">Get started free →</a>
+    <a href="https://github.com/ronmiz/infernoflow" target="_blank" class="btn-secondary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+</div>
+
+<!-- WORKS WITH -->
+<div class="works-with">
+  <p>Works with your AI coding tools</p>
+  <div class="ides">
+    <div class="ide-pill">🤖 GitHub Copilot</div>
+    <div class="ide-pill">⚡ Cursor</div>
+    <div class="ide-pill">🔶 Claude Code</div>
+    <div class="ide-pill">🌊 Windsurf</div>
+    <div class="ide-pill">💻 VS Code</div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section id="features" style="background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="section-inner">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything your AI needs<br>to stay in context</h2>
+    <p class="section-sub">infernoflow runs silently in the background, capturing what your AI can't infer from code alone.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <h3>Persistent session memory</h3>
+        <p>Log decisions, gotchas, and in-progress work. When you start a new session, your AI loads the full context automatically.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🪝</div>
+        <h3>Auto-capture from git hooks</h3>
+        <p>Every commit is analyzed. Decisions, bug fixes, and WIP work are captured silently — no manual logging required.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Instant context switching</h3>
+        <p>Run <code>infernoflow switch</code> to generate a full handoff — open threads, git activity, session duration, and next steps.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">☁️</div>
+        <h3>Cloud session sync</h3>
+        <p>Push your session memory to the cloud and pull it on any machine. Never lose context when switching environments.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Capability contracts</h3>
+        <p>infernoflow tracks what your codebase can do — not just what it contains. MCP tools keep your AI aligned with the contract.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📡</div>
+        <h3>MCP server included</h3>
+        <p>Ships with MCP tools your AI calls automatically: implement, check, review, synthesize, and more. Zero configuration.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+  <div class="section-inner">
+    <div class="section-label">How it works</div>
+    <h2 class="section-title">Up and running in 60 seconds</h2>
+    <p class="section-sub">Three commands and your AI has persistent memory for every project.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Install globally</h3>
+          <p>Run <code>npm install -g infernoflow</code> once. Works on Node 18+.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Initialize your project</h3>
+          <p>Run <code>infernoflow setup</code> in your project root. Creates the <code>inferno/</code> memory folder, installs git hooks, and generates a CLAUDE.md with auto-behavior instructions for your AI.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Log as you work</h3>
+          <p>Run <code>infernoflow log "decided to use Zustand over Redux"</code> to capture decisions. Git hooks capture commit context automatically. Your AI reads it all on the next session start.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Switch sessions cleanly</h3>
+          <p>Run <code>infernoflow switch</code> to generate a rich handoff. Open threads, git activity, session duration, IDE — everything the next session needs to hit the ground running.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" style="background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="section-inner">
+    <div class="section-label">Pricing</div>
+    <h2 class="section-title">Free to start.<br>Pro when you need more.</h2>
+    <p class="section-sub">The core CLI is open source and free forever. Pro features for teams and power users coming soon.</p>
+    <div class="pricing-grid">
+      <div class="plan-card">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">$0</div>
+        <div class="plan-desc">Everything you need for solo development. Open source, MIT licensed.</div>
+        <ul class="plan-features">
+          <li>Unlimited local session memory</li>
+          <li>All CLI commands (log, switch, recap, ask…)</li>
+          <li>MCP server + all MCP tools</li>
+          <li>Git hooks auto-capture</li>
+          <li>VS Code extension</li>
+          <li>Cloud sync (GitHub Gist backend)</li>
+        </ul>
+        <a href="https://github.com/ronmiz/infernoflow#readme" target="_blank" class="plan-cta secondary">Get started →</a>
+      </div>
+      <div class="plan-card featured">
+        <div class="plan-badge">Coming soon</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price"><sup>$</sup>9<span>/mo</span></div>
+        <div class="plan-desc">For developers who live in their tools and want the full picture.</div>
+        <ul class="plan-features">
+          <li>Everything in Free</li>
+          <li>Dedicated cloud sync (no Gist limits)</li>
+          <li>Team memory sharing</li>
+          <li>AI-powered recap & insights</li>
+          <li>Priority support</li>
+          <li>Early access to new features</li>
+        </ul>
+        <button class="plan-cta primary" onclick="joinWaitlist()">Join waitlist →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BANNER -->
+<div class="cta-banner">
+  <h2>Stop re-explaining your codebase<br>to your AI every morning.</h2>
+  <p>infernoflow gives it memory that persists.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="https://github.com/ronmiz/infernoflow#readme" target="_blank" class="btn-primary">Install free in 60 seconds →</a>
+    <a href="https://github.com/ronmiz/infernoflow" target="_blank" class="btn-secondary">Star on GitHub ⭐</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">🔥 <span>inferno</span>flow</div>
+    <div class="footer-links">
+      <a href="https://github.com/ronmiz/infernoflow" target="_blank">GitHub</a>
+      <a href="https://www.npmjs.com/package/infernoflow" target="_blank">npm</a>
+      <a href="https://github.com/ronmiz/infernoflow/issues" target="_blank">Issues</a>
+      <a href="https://github.com/ronmiz/infernoflow/blob/main/CHANGELOG.md" target="_blank">Changelog</a>
+    </div>
+    <div class="footer-copy">MIT License · Built by Ron Mizrachi</div>
+  </div>
+</footer>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✓ Copied to clipboard</div>
+
+<script>
+  function copyInstall() {
+    navigator.clipboard.writeText('npm install -g infernoflow').then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copied!';
+      btn.style.background = '#f97316';
+      btn.style.color = 'white';
+      setTimeout(() => { btn.textContent = 'Copy'; btn.style.background = ''; btn.style.color = ''; }, 2000);
+
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    });
+  }
+
+  function joinWaitlist() {
+    window.location.href = 'mailto:hello@infernoflow.dev?subject=infernoflow Pro waitlist&body=Hi Ron, I want to join the infernoflow Pro waitlist.';
+  }
+</script>
+
+</body>
+</html>
