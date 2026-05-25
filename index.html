@@ -391,7 +391,7 @@
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-badge">🔥 v0.43.6 — one focused thing: persistent memory for AI sessions</div>
+  <div class="hero-badge">🔥 persistent memory for AI sessions</div>
   <h1>Your AI can read your code.<br><em>infernoflow tells it everything your code doesn't say.</em></h1>
   <p class="hero-sub">
     Persistent memory for AI coding sessions. Captures <strong>decisions, gotchas, and context</strong> — the stuff that lives in your head, not your codebase.
@@ -433,8 +433,8 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">🪝</div>
-        <h3>Auto-capture from git hooks</h3>
-        <p>Every commit is analyzed. Decisions, bug fixes, and WIP work are captured silently — no manual logging required.</p>
+        <h3>Auto-capture via MCP</h3>
+        <p>Your AI agent calls <code>amp_write</code> directly through MCP — gotchas, decisions, and failed attempts get logged as you work, no copy-paste required. Optional git hook for commit messages too.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">⚡</div>
@@ -447,14 +447,14 @@
         <p>Memory stored in <code>.ai-memory/sessions.jsonl</code> using the <strong>AI Memory Protocol</strong> — vendor-neutral, MIT-licensed. Any AMP-compatible tool can read it. No lock-in.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon">🔍</div>
-        <h3>Capability contracts</h3>
-        <p>infernoflow tracks what your codebase can do — not just what it contains. MCP tools keep your AI aligned with the contract.</p>
+        <div class="feature-icon">🌿</div>
+        <h3>Branch-aware memory</h3>
+        <p>Memory routes into <code>.ai-memory/branches/&lt;branch&gt;.jsonl</code> — travels with git. Switch branches, your AI sees the right context. Teammates inherit memory by checking out your branch.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">📡</div>
         <h3>MCP server included</h3>
-        <p>Ships with MCP tools your AI calls automatically: implement, check, review, synthesize, and more. Zero configuration.</p>
+        <p>Ships with MCP tools your AI calls automatically: <code>amp_write</code>, <code>amp_read</code>, <code>amp_search</code>, <code>amp_handoff</code>, <code>amp_health</code>, plus four <code>infernoflow_*</code> helpers. Zero configuration.</p>
       </div>
     </div>
   </div>
@@ -478,7 +478,7 @@
         <div class="step-num">2</div>
         <div class="step-body">
           <h3>Initialize your project</h3>
-          <p>Run <code>infernoflow setup</code> in your project root. Creates the <code>inferno/</code> memory folder, installs git hooks, and generates a CLAUDE.md with auto-behavior instructions for your AI.</p>
+          <p>Run <code>infernoflow init</code> in your project root. Creates <code>.ai-memory/</code>, wires the MCP server into Claude Code / Cursor / VS Code Copilot in one command, and generates the rule files (CLAUDE.md / .cursorrules / copilot-instructions.md) your AI reads automatically.</p>
         </div>
       </div>
       <div class="step">
