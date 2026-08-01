@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>infernoflow — Architecture</title>
+<meta name="description" content="How infernoflow works: a local-first persistent memory layer for AI coding sessions — the four-layer model, the AMP protocol, storage, MCP transports and the capture loop." />
+<meta property="og:title" content="infernoflow — Architecture" />
+<meta property="og:url" content="https://infernoflow.dev/architecture" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>" />
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#30363d;
+    --text:#e6edf3; --dim:#8b949e; --faint:#6e7681;
+    --orange:#ff7b34; --orange2:#ff9d5c; --green:#3fb950; --cyan:#58a6ff;
+    --yellow:#d29922; --purple:#bc8cff; --red:#ff6b57;
+    --mono:'SF Mono',ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;font-size:16px}
+  a{color:var(--cyan);text-decoration:none}
+  code,.mono{font-family:var(--mono)}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+
+  /* header */
+  header.hero{padding:64px 0 40px;border-bottom:1px solid var(--border);
+    background:radial-gradient(1200px 400px at 15% -10%,rgba(255,123,52,.14),transparent 60%),
+               radial-gradient(900px 380px at 90% 0%,rgba(88,166,255,.08),transparent 55%);}
+  .brandrow{display:flex;align-items:center;gap:14px}
+  .flame{font-size:44px;line-height:1;filter:drop-shadow(0 4px 14px rgba(255,123,52,.5))}
+  h1{font-size:46px;margin:0;letter-spacing:-1.5px;font-weight:800}
+  .ver{font-family:var(--mono);font-size:14.5px;color:var(--orange);border:1px solid rgba(255,123,52,.4);
+    padding:3px 9px;border-radius:20px;margin-left:6px;vertical-align:middle}
+  .tagline{font-size:21px;color:var(--dim);max-width:820px;margin:20px 0 0;font-weight:400}
+  .tagline b{color:var(--text);font-weight:600}
+  .metarow{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+  .pill{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--border);
+    color:var(--dim);padding:6px 12px;border-radius:8px}
+  .pill b{color:var(--green);font-weight:600}
+
+  /* nav */
+  .site-nav{position:sticky;top:0;z-index:30;height:52px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 28px;background:rgba(13,17,23,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .site-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px;color:var(--text);letter-spacing:-.3px}
+  .site-logo span{color:var(--orange)}
+  .site-links{display:flex;align-items:center;gap:22px}
+  .site-links a{font-size:15.5px;color:var(--dim);transition:color .15s}
+  .site-links a:hover,.site-links a.active{color:var(--text)}
+  .site-gh{border:1px solid var(--border);border-radius:8px;padding:6px 13px;color:var(--text)!important;font-size:14.5px;font-weight:500}
+  .site-gh:hover{border-color:var(--orange);background:rgba(255,123,52,.06)}
+  @media(max-width:640px){.site-links a.hm{display:none}}
+  nav.toc{position:sticky;top:52px;z-index:20;background:rgba(13,17,23,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);padding:11px 0}
+  nav.toc .wrap{display:flex;flex-wrap:wrap;gap:5px}
+  nav.toc a{font-size:14px;color:var(--dim);padding:5px 11px;border-radius:7px;white-space:nowrap;transition:.15s}
+  nav.toc a:hover{background:var(--panel);color:var(--text)}
+
+  section{padding:52px 0;border-bottom:1px solid var(--border)}
+  .kicker{font-family:var(--mono);font-size:14px;color:var(--orange);letter-spacing:2px;text-transform:uppercase;margin:0 0 10px}
+  h2{font-size:31px;margin:0 0 8px;letter-spacing:-.6px;font-weight:700}
+  h3{font-size:19px;margin:30px 0 12px;font-weight:650;color:var(--text)}
+  p{color:#c9d3de;margin:12px 0}
+  .lead{font-size:18px;color:var(--dim);max-width:900px}
+  strong{color:var(--text)}
+  em{color:var(--orange2);font-style:normal}
+
+  /* generic box */
+  .box{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px 22px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+
+  /* layered architecture diagram */
+  .layers{display:flex;flex-direction:column;gap:16px;margin:26px 0}
+  .layer{border:1px solid var(--border);border-radius:14px;padding:16px 18px;background:var(--panel);position:relative}
+  .layer .lname{font-family:var(--mono);font-size:13px;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--faint);position:absolute;top:-9px;left:16px;background:var(--bg);padding:0 8px}
+  .nodes{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+  .node{flex:1 1 auto;min-width:150px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+    padding:11px 14px;font-size:15.5px}
+  .node .t{font-weight:650;font-size:16px}
+  .node .d{color:var(--dim);font-size:14px;margin-top:3px;font-family:var(--mono)}
+  .layer.clients{border-color:rgba(88,166,255,.4)}
+  .layer.clients .node{border-color:rgba(88,166,255,.3)}
+  .layer.transport{border-color:rgba(188,140,255,.4)}
+  .layer.transport .node{border-color:rgba(188,140,255,.3)}
+  .layer.core{border-color:rgba(255,123,52,.55)}
+  .layer.core .node{border-color:rgba(255,123,52,.35)}
+  .layer.storage{border-color:rgba(63,185,80,.45)}
+  .layer.storage .node{border-color:rgba(63,185,80,.32)}
+  .flowarrow{text-align:center;color:var(--faint);font-size:20px;line-height:.4;margin:-6px 0}
+
+  /* loop diagram */
+  .loop{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:26px 0}
+  @media(max-width:820px){.loop{grid-template-columns:1fr 1fr}}
+  .stage{position:relative;background:var(--panel);border:1px solid var(--border);padding:18px 16px;
+    border-radius:0}
+  .stage:first-child{border-radius:12px 0 0 12px}
+  .stage:last-child{border-radius:0 12px 12px 0}
+  @media(max-width:820px){.stage{border-radius:12px!important}}
+  .stage .num{font-family:var(--mono);color:var(--orange);font-size:13.5px;font-weight:700}
+  .stage .st{font-weight:700;font-size:16px;margin:6px 0 5px}
+  .stage .sd{font-size:14.5px;color:var(--dim)}
+  .stage .arrow{position:absolute;right:-11px;top:50%;transform:translateY(-50%);z-index:3;
+    color:var(--orange);font-size:20px;background:var(--bg);border-radius:50%}
+  @media(max-width:820px){.stage .arrow{display:none}}
+
+  /* code */
+  pre{background:#0a0d12;border:1px solid var(--border);border-radius:12px;padding:16px 18px;overflow:auto;
+    font-family:var(--mono);font-size:14.5px;line-height:1.6;color:#cdd9e5;margin:16px 0}
+  pre .c{color:var(--faint)} pre .k{color:var(--orange2)} pre .s{color:var(--green)}
+  pre .b{color:var(--cyan)} pre .p{color:var(--purple)}
+  .tag{display:inline-block;font-family:var(--mono);font-size:13px;padding:2px 8px;border-radius:6px;
+    border:1px solid var(--border);color:var(--dim);margin:2px}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:15.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--dim);font-weight:600;font-size:13.5px;text-transform:uppercase;letter-spacing:.5px}
+  td code{color:var(--orange2);font-size:14px}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+
+  /* principle cards */
+  .pcard{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+  .pcard .ic{font-size:22px}
+  .pcard h4{margin:8px 0 6px;font-size:15.5px}
+  .pcard p{font-size:15px;color:var(--dim);margin:0}
+
+  .callout{border-left:3px solid var(--orange);background:linear-gradient(90deg,rgba(255,123,52,.08),transparent);
+    padding:14px 18px;border-radius:0 10px 10px 0;margin:20px 0;font-size:15px}
+  .two-col-list{columns:2;column-gap:26px}
+  @media(max-width:820px){.two-col-list{columns:1}}
+  ul.clean{list-style:none;padding:0;margin:10px 0}
+  ul.clean li{padding:6px 0 6px 24px;position:relative;font-size:16px;color:#c9d3de}
+  ul.clean li::before{content:"▸";color:var(--orange);position:absolute;left:4px}
+  footer{padding:34px 0;border-top:1px solid var(--border)}
+  .footer-inner{max-width:1180px;margin:0 auto;padding:0 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+  .footer-logo{font-size:16px;font-weight:700;color:var(--text)}.footer-logo span{color:var(--orange)}
+  .footer-links{display:flex;gap:22px}.footer-links a{font-size:14.5px;color:var(--dim)}.footer-links a:hover{color:var(--text)}
+  .footer-copy{font-size:14.5px;color:var(--faint)}.footer-copy a{color:inherit}
+  @media(max-width:640px){.footer-inner{flex-direction:column;text-align:center}}
+  .fire-line{height:3px;background:linear-gradient(90deg,var(--orange),var(--red),transparent);border:0;margin:0}
+  @media print{
+    nav.toc{display:none!important}
+    section{padding:26px 0!important;break-inside:avoid}
+    header.hero{padding:34px 0 26px!important}
+    .box,.pcard,.layer,.stage,pre,table,.loop,.grid2,.grid3,.callout{break-inside:avoid}
+    h2{break-after:avoid}
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="/" class="site-logo">🔥 <span>inferno</span>flow</a>
+  <div class="site-links">
+    <a href="/">← Home</a>
+    <a href="/#features" class="hm">Features</a>
+    <a href="/#how-it-works" class="hm">How it works</a>
+    <a href="/architecture" class="active">Architecture</a>
+    <a href="https://www.npmjs.com/package/infernoflow" target="_blank" class="site-gh">npm</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brandrow"><span class="flame">🔥</span><h1>infernoflow</h1><span class="ver">v0.44.15</span></div>
+    <p class="tagline">A <b>local-first persistent memory layer</b> for AI coding sessions. It captures the gotchas, decisions and dead-ends your <b>code can't tell an agent</b> — and replays them into the next Cursor / Claude&nbsp;Code / Copilot session, so the same wrong turn never happens twice.</p>
+    <div class="metarow">
+      <span class="pill">runtime deps <b>0</b></span>
+      <span class="pill">storage <b>JSONL on disk</b></span>
+      <span class="pill">protocol <b>AMP (open)</b></span>
+      <span class="pill">transports <b>MCP · LMT · CLI</b></span>
+      <span class="pill">telemetry <b>none</b></span>
+      <span class="pill">license <b>MIT</b></span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#problem">Problem</a>
+  <a href="#overview">System overview</a>
+  <a href="#loop">The loop</a>
+  <a href="#flow">Data flow</a>
+  <a href="#data">Data model · AMP</a>
+  <a href="#storage">Storage</a>
+  <a href="#transports">Transports</a>
+  <a href="#injection">Injection &amp; refresh</a>
+  <a href="#capture">Capture pipeline</a>
+  <a href="#contracts">Contracts</a>
+  <a href="#sync">Branch &amp; sync</a>
+  <a href="#components">Components</a>
+  <a href="#security">Security</a>
+  <a href="#principles">Principles</a>
+</div></nav>
+
+<!-- PROBLEM -->
+<section id="problem"><div class="wrap">
+  <p class="kicker">The problem</p>
+  <h2>Every AI session starts cold</h2>
+  <p class="lead">You spend 90 minutes teaching an agent that your auth API returns <code>200</code> even on errors. Next session it writes <code>if (response.ok)</code> all over again. The model didn't get worse — <em>it has no memory</em>. Code changes daily; what the system <i>actually does</i> under those edits — the invariants, the constraints, the things that bit you last week — code can't tell you.</p>
+  <div class="grid3" style="margin-top:24px">
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--red)">Re-derivation</h4><p style="margin:0;color:var(--dim);font-size:15.5px">Each session re-reads the code and re-infers the obvious, burning tokens and wall-clock.</p></div>
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--red)">Repeated mistakes</h4><p style="margin:0;color:var(--dim);font-size:15.5px">The same wrong turn someone hit yesterday gets made again — the gotcha never persisted.</p></div>
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--red)">Lost decisions</h4><p style="margin:0;color:var(--dim);font-size:15.5px">"Why opaque tokens, not JWTs?" — the rationale lived in a chat that's gone.</p></div>
+  </div>
+</div></section>
+
+<!-- OVERVIEW -->
+<section id="overview"><div class="wrap">
+  <p class="kicker">System overview</p>
+  <h2>Four layers, one disk file</h2>
+  <p class="lead">Clients talk to infernoflow over several interchangeable transports; a small deterministic core reads and writes a single on-disk memory store and keeps the IDE rule files current. No service, no daemon, no network in the default path.</p>
+
+  <div class="layers">
+    <div class="layer clients"><span class="lname">Clients — AI agents</span>
+      <div class="nodes">
+        <div class="node"><div class="t">Claude Code</div><div class="d">reads CLAUDE.md</div></div>
+        <div class="node"><div class="t">Cursor</div><div class="d">reads .cursorrules</div></div>
+        <div class="node"><div class="t">GitHub Copilot</div><div class="d">copilot-instructions.md</div></div>
+        <div class="node"><div class="t">Windsurf</div><div class="d">.windsurfrules</div></div>
+      </div>
+    </div>
+    <div class="flowarrow">▲ &nbsp; read / write &nbsp; ▼</div>
+    <div class="layer transport"><span class="lname">Transports — same six tools everywhere</span>
+      <div class="nodes">
+        <div class="node"><div class="t">MCP server</div><div class="d">amp_* · infernoflow_*</div></div>
+        <div class="node"><div class="t">VS Code LMT</div><div class="d">#amp_write / #amp_read</div></div>
+        <div class="node"><div class="t">CLI</div><div class="d">log · ask · switch · bookmark</div></div>
+        <div class="node"><div class="t">Rule files</div><div class="d">injected, marker-managed</div></div>
+      </div>
+    </div>
+    <div class="flowarrow">▲ &nbsp; &nbsp; ▼</div>
+    <div class="layer core"><span class="lname">Core engine — deterministic, zero-dep</span>
+      <div class="nodes">
+        <div class="node"><div class="t">AMP writer / reader</div><div class="d">lib/amp/io.mjs</div></div>
+        <div class="node"><div class="t">Injection / refresh</div><div class="d">ruleFiles.mjs</div></div>
+        <div class="node"><div class="t">Learning profile</div><div class="d">lib/learning/*</div></div>
+        <div class="node"><div class="t">Git drift</div><div class="d">lib/git/*</div></div>
+        <div class="node"><div class="t">Clean-tree policy</div><div class="d">cleanTree.mjs</div></div>
+      </div>
+    </div>
+    <div class="flowarrow">▲ &nbsp; &nbsp; ▼</div>
+    <div class="layer storage"><span class="lname">Storage — plain files, git-tracked</span>
+      <div class="nodes">
+        <div class="node"><div class="t">.ai-memory/branches/*.jsonl</div><div class="d">per-branch, travels via git</div></div>
+        <div class="node"><div class="t">details/*.md</div><div class="d">tier-2 rich bodies</div></div>
+        <div class="node"><div class="t">global.jsonl</div><div class="d">personal, gitignored</div></div>
+        <div class="node"><div class="t">amp.json</div><div class="d">config</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="callout">The same six <code>amp_*</code> tools are exposed over MCP, VS Code LMT <i>and</i> as CLI aliases — <strong>one product, one disk file, multiple transports</strong>. Pick whichever fits your setup; all paths write to the same <code>.ai-memory/</code>.</div>
+</div></section>
+
+<!-- LOOP -->
+<section id="loop"><div class="wrap">
+  <p class="kicker">The loop</p>
+  <h2>Capture → Link → Persist → Restore</h2>
+  <p class="lead">infernoflow closes the cold-start loop in four stages. Most of it happens without you: the MCP-aware agent writes entries; the CLI and hooks back it up; the next session boots warm.</p>
+  <div class="loop">
+    <div class="stage"><div class="num">01</div><div class="st">Capture</div><div class="sd">A gotcha, decision, failed attempt or pattern is worth saving. The AI calls <code>amp_write</code>; a Cursor prompt-hook backstops it deterministically.</div><span class="arrow">→</span></div>
+    <div class="stage"><div class="num">02</div><div class="st">Link</div><div class="sd">Each moment becomes a structured AMP entry — type, <code>file:line</code>, tags, timestamp, a stable AMP id.</div><span class="arrow">→</span></div>
+    <div class="stage"><div class="num">03</div><div class="st">Persist</div><div class="sd">Entries land in <code>branches/&lt;branch&gt;.jsonl</code> (git-tracked) or <code>global.jsonl</code> (personal). Travels with the branch.</div><span class="arrow">→</span></div>
+    <div class="stage"><div class="num">04</div><div class="st">Restore</div><div class="sd">Next session, the agent reads the rule files at boot — the most relevant entries are already there. <em>Warm start.</em></div></div>
+  </div>
+</div></section>
+
+<!-- DATA FLOW -->
+<section id="flow"><div class="wrap">
+  <p class="kicker">Data flow</p>
+  <h2>The closed memory loop</h2>
+  <p class="lead">How a single finding travels the whole system — from the moment it surfaces to the next session that starts warm because of it.</p>
+  <div style="margin:30px 0 8px;overflow-x:auto">
+  <svg viewBox="0 0 1120 480" role="img" aria-label="infernoflow data flow diagram" style="width:100%;min-width:820px;height:auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+    <defs>
+      <marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L7,3 L0,6 Z" fill="#ff7b34"/>
+      </marker>
+    </defs>
+    <!-- arrows -->
+    <g stroke="#ff7b34" stroke-width="2.5" fill="none" marker-end="url(#ah)">
+      <line x1="336" y1="90" x2="402" y2="90"/>
+      <line x1="710" y1="90" x2="776" y2="90"/>
+      <line x1="934" y1="136" x2="934" y2="336"/>
+      <line x1="784" y1="390" x2="718" y2="390"/>
+      <line x1="410" y1="390" x2="344" y2="390"/>
+      <line x1="186" y1="344" x2="186" y2="144"/>
+    </g>
+    <!-- centre label -->
+    <text x="560" y="234" text-anchor="middle" fill="#6e7681" font-size="13" letter-spacing="3" font-weight="700">THE MEMORY LOOP</text>
+    <text x="560" y="260" text-anchor="middle" fill="#8b949e" font-size="15">warm start, no cold derivation</text>
+    <!-- arrow labels -->
+    <text x="950" y="228" fill="#6e7681" font-size="13">MCP boot</text>
+    <text x="950" y="248" fill="#6e7681" font-size="13">/ commit</text>
+    <!-- nodes -->
+    <g>
+      <rect x="36" y="44" width="300" height="92" rx="12" fill="#161b22" stroke="#6e7681" stroke-width="1.6"/>
+      <circle cx="66" cy="74" r="14" fill="#1c2230" stroke="#6e7681" stroke-width="1.4"/>
+      <text x="66" y="79" text-anchor="middle" fill="#8b949e" font-size="14" font-weight="700">1</text>
+      <text x="92" y="81" fill="#e6edf3" font-size="19" font-weight="700">You + AI work</text>
+      <text x="58" y="114" fill="#8b949e" font-size="14" font-family="ui-monospace,'SF Mono',Menlo,monospace">a gotcha / decision surfaces</text>
+    </g>
+    <g>
+      <rect x="410" y="44" width="300" height="92" rx="12" fill="#161b22" stroke="#58a6ff" stroke-width="1.6"/>
+      <circle cx="440" cy="74" r="14" fill="#1c2230" stroke="#58a6ff" stroke-width="1.4"/>
+      <text x="440" y="79" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">2</text>
+      <text x="466" y="81" fill="#e6edf3" font-size="19" font-weight="700">Capture</text>
+      <text x="432" y="114" fill="#8b949e" font-size="14" font-family="ui-monospace,'SF Mono',Menlo,monospace">amp_write · MCP / hook</text>
+    </g>
+    <g>
+      <rect x="784" y="44" width="300" height="92" rx="12" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+      <circle cx="814" cy="74" r="14" fill="#1c2230" stroke="#3fb950" stroke-width="1.4"/>
+      <text x="814" y="79" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">3</text>
+      <text x="840" y="81" fill="#e6edf3" font-size="19" font-weight="700">Persist</text>
+      <text x="806" y="114" fill="#8b949e" font-size="14" font-family="ui-monospace,'SF Mono',Menlo,monospace">.ai-memory/*.jsonl (git)</text>
+    </g>
+    <g>
+      <rect x="784" y="344" width="300" height="92" rx="12" fill="#161b22" stroke="#ff7b34" stroke-width="1.6"/>
+      <circle cx="814" cy="374" r="14" fill="#1c2230" stroke="#ff7b34" stroke-width="1.4"/>
+      <text x="814" y="379" text-anchor="middle" fill="#ff7b34" font-size="14" font-weight="700">4</text>
+      <text x="840" y="381" fill="#e6edf3" font-size="19" font-weight="700">Refresh</text>
+      <text x="806" y="414" fill="#8b949e" font-size="14" font-family="ui-monospace,'SF Mono',Menlo,monospace">regenerate rule files</text>
+    </g>
+    <g>
+      <rect x="410" y="344" width="300" height="92" rx="12" fill="#161b22" stroke="#58a6ff" stroke-width="1.6"/>
+      <circle cx="440" cy="374" r="14" fill="#1c2230" stroke="#58a6ff" stroke-width="1.4"/>
+      <text x="440" y="379" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">5</text>
+      <text x="466" y="381" fill="#e6edf3" font-size="19" font-weight="700">Rule files</text>
+      <text x="432" y="414" fill="#8b949e" font-size="14" font-family="ui-monospace,'SF Mono',Menlo,monospace">CLAUDE.md · .cursorrules</text>
+    </g>
+    <g>
+      <rect x="36" y="344" width="300" height="92" rx="12" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+      <circle cx="66" cy="374" r="14" fill="#1c2230" stroke="#3fb950" stroke-width="1.4"/>
+      <text x="66" y="379" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">6</text>
+      <text x="92" y="381" fill="#e6edf3" font-size="19" font-weight="700">Next session</text>
+      <text x="58" y="414" fill="#8b949e" font-size="14" font-family="ui-monospace,'SF Mono',Menlo,monospace">AI reads at boot</text>
+    </g>
+  </svg>
+  </div>
+  <p class="body" style="color:var(--dim);font-size:14.5px;max-width:900px">Steps 1→3 are <em>capture</em> (the AI writes, hooks back it up); 4→6 are <em>restore</em> (the core regenerates the rule files, the next session reads them at boot). The green nodes are the durable on-disk state; the cyan nodes are what the agent reads and writes.</p>
+</div></section>
+
+<!-- DATA MODEL -->
+<section id="data"><div class="wrap">
+  <p class="kicker">Data model — the AMP protocol</p>
+  <h2>Everything is a typed AMP entry</h2>
+  <p class="lead">AMP (Agent Memory Protocol) is the vendor-neutral format at the core. One append-only JSONL record per memory, with a stable id so any AMP-Full client can reference it.</p>
+  <div class="grid2">
+    <div>
+      <h3>Entry schema</h3>
+      <pre><span class="c">// one line in branches/&lt;branch&gt;.jsonl</span>
+{
+  <span class="p">"id"</span>:    <span class="s">"amp_01KYVXSNMAWCQ9…"</span>,  <span class="c">// stable AMP id</span>
+  <span class="p">"type"</span>:  <span class="s">"gotcha"</span>,               <span class="c">// see types →</span>
+  <span class="p">"msg"</span>:   <span class="s">"API returns 200 on errors"</span>,
+  <span class="p">"file"</span>:  <span class="s">"server/src/api.ts"</span>,
+  <span class="p">"line"</span>:  <span class="b">42</span>,
+  <span class="p">"tags"</span>:  [<span class="s">"auth"</span>,<span class="s">"http"</span>],
+  <span class="p">"ts"</span>:    <span class="s">"2026-07-31T08:12:03Z"</span>,
+  <span class="p">"agent"</span>: <span class="s">"infernoflow"</span>,          <span class="c">// who wrote it: user | infernoflow</span>
+  <span class="p">"detail"</span>: <span class="s">"amp_01KY…"</span>            <span class="c">// optional → details/&lt;id&gt;.md</span>
+}</pre>
+    </div>
+    <div>
+      <h3>Entry types &amp; retention</h3>
+      <table>
+        <thead><tr><th>Type</th><th>Meaning</th><th>Auto-prune?</th></tr></thead>
+        <tbody>
+          <tr><td><code>gotcha</code></td><td>An invariant that bit you</td><td style="color:var(--green)">never</td></tr>
+          <tr><td><code>decision</code></td><td>A standing choice + rationale</td><td style="color:var(--green)">never</td></tr>
+          <tr><td><code>pattern</code></td><td>How things are done here</td><td style="color:var(--green)">never</td></tr>
+          <tr><td><code>bookmark</code></td><td>Named session resume point</td><td style="color:var(--green)">never</td></tr>
+          <tr><td><code>attempt</code></td><td>A fix that failed</td><td style="color:var(--yellow)">30d</td></tr>
+          <tr><td><code>note</code></td><td>Transient observation</td><td style="color:var(--yellow)">30d</td></tr>
+          <tr><td><code>detection</code></td><td>Auto-detected signal</td><td style="color:var(--yellow)">30d</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:15px;color:var(--dim)">Rotation archives stale <code>note</code>/<code>attempt</code>/<code>detection</code> to <code>archive/</code> — invisible to reads, still on disk. The four durable types are the knowledge you logged infernoflow <i>for</i>.</p>
+    </div>
+  </div>
+  <h3>Two-tier bodies</h3>
+  <p>The lean <strong>index</strong> (msg + file:line) is what gets injected and stays cheap. A rich <code>detail</code> body lives in <code>details/&lt;id&gt;.md</code>, loaded on demand via <code>readDetail()</code> and <strong>never injected</strong> into rule files — you pay for the body only when you open it.</p>
+</div></section>
+
+<!-- STORAGE -->
+<section id="storage"><div class="wrap">
+  <p class="kicker">Storage layout</p>
+  <h2>One directory, git-native</h2>
+  <div class="grid2">
+    <div>
+      <pre><span class="k">.ai-memory/</span>
+├── <span class="b">branches/</span>
+│   ├── main.jsonl          <span class="c">project truths (git-tracked)</span>
+│   └── feature-auth.jsonl  <span class="c">branch work (git-tracked)</span>
+├── <span class="b">details/</span>
+│   └── amp_01KY….md        <span class="c">tier-2 bodies (on demand)</span>
+├── <span class="b">archive/</span>
+│   └── sessions-2026-07.jsonl  <span class="c">rotated-out</span>
+├── global.jsonl            <span class="c">personal prefs (gitignored)</span>
+├── handoff.md              <span class="c">generated by `switch`</span>
+└── amp.json                <span class="c">config</span></pre>
+    </div>
+    <div>
+      <h3>Why plain JSONL on disk</h3>
+      <ul class="clean">
+        <li><strong>Git is the sync + merge engine.</strong> Branch memory travels with the branch; teammates inherit it on checkout.</li>
+        <li><strong><code>merge=union</code></strong> on the branch JSONLs means concurrent commits from two machines merge cleanly — no conflict resolution.</li>
+        <li><strong>No lock-in.</strong> It's readable text; grep it, diff it, delete it. No SaaS to leave.</li>
+        <li><strong>Append-only</strong> writes keep the working tree calm; rule files refresh only at MCP boot / explicit <code>refresh</code>.</li>
+      </ul>
+    </div>
+  </div>
+</div></section>
+
+<!-- TRANSPORTS -->
+<section id="transports"><div class="wrap">
+  <p class="kicker">Transports &amp; integration</p>
+  <h2>Same memory, every tool</h2>
+  <table>
+    <thead><tr><th>Tool</th><th>Reads from</th><th>Writes via</th></tr></thead>
+    <tbody>
+      <tr><td>Claude Code</td><td><code>CLAUDE.md</code></td><td>MCP (<code>amp_write</code>)</td></tr>
+      <tr><td>Cursor</td><td><code>.cursorrules</code></td><td>MCP + <code>beforeSubmitPrompt</code> hook</td></tr>
+      <tr><td>GitHub Copilot (VS Code)</td><td><code>.github/copilot-instructions.md</code></td><td>VS Code LMT + MCP — both wired</td></tr>
+      <tr><td>Windsurf</td><td><code>.windsurfrules</code></td><td>MCP (manual wiring)</td></tr>
+    </tbody>
+  </table>
+  <h3>MCP tool surface</h3>
+  <p>When the server is wired, the agent calls these directly. The six <code>amp_*</code> tools follow the AMP MCP spec — vendor-neutral — and are mirrored as CLI aliases name-for-name.</p>
+  <div>
+    <span class="tag">amp_write</span><span class="tag">amp_read</span><span class="tag">amp_search</span>
+    <span class="tag">amp_bookmark</span><span class="tag">amp_handoff</span><span class="tag">amp_health</span>
+    <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_status</span>
+    <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_check</span>
+    <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_context</span>
+    <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_git_drift</span>
+  </div>
+</div></section>
+
+<!-- INJECTION -->
+<section id="injection"><div class="wrap">
+  <p class="kicker">Injection &amp; refresh</p>
+  <h2>Rule files stay current, and lean</h2>
+  <p class="lead">The agent reads the IDE's own rule files at boot. infernoflow owns a marked-off block inside each; your manual edits outside the markers are never touched.</p>
+  <div class="grid2">
+    <div>
+      <h3>Marker-scoped, budget-bounded</h3>
+      <pre><span class="c">&lt;!-- infernoflow:start --&gt;</span>
+🔥 gotcha @ api.ts:42 — 200 on errors, check body
+🔥 decision @ auth.ts — opaque tokens, revocable
+<span class="c">&lt;!-- infernoflow:end --&gt;</span></pre>
+      <p style="font-size:15px;color:var(--dim)">Injected content is paid for on <i>every</i> turn, so defaults are lean: 4 entries, 5 commits, 200-char truncation, a compact ~3-line protocol. Tunable in <code>amp.json</code> (<code>maxEntries</code>, <code>protocolStyle</code>, <code>targets</code>).</p>
+    </div>
+    <div>
+      <h3>Refresh triggers</h3>
+      <ul class="clean">
+        <li><strong>MCP server boot</strong> — the canonical moment rule files regenerate from memory.</li>
+        <li><strong><code>infernoflow refresh</code></strong> — manual rebuild; <code>--targets</code> controls which files carry the block.</li>
+        <li><strong>git post-commit hook</strong> — keeps the block honest as work lands.</li>
+        <li><strong>Content-hash guard</strong> — only rewrites when content actually changed, so the tree stays clean.</li>
+      </ul>
+      <p style="font-size:14.5px;color:var(--faint)">Note: a running MCP server loads once at session start — after an upgrade, quit &amp; reopen the IDE. <code>infernoflow doctor</code> flags a runtime/CLI version mismatch.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- CAPTURE -->
+<section id="capture"><div class="wrap">
+  <p class="kicker">Capture pipeline</p>
+  <h2>The AI writes it — with a deterministic backstop</h2>
+  <div class="grid3">
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">1 · AI-driven</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A protocol block in the rule files teaches the agent <i>when</i> to call <code>amp_write</code>: on a gotcha hit, a decision, a failed fix, a pattern.</p></div>
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">2 · Hook backstop</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A Cursor <code>beforeSubmitPrompt</code> hook scans your prompt for triggers (<code>!!</code>, <code>retry</code>, <code>not working</code>, <code>bookmark this</code>) and writes the entry deterministically when the AI doesn't.</p></div>
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">3 · Transcript distillation</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A <code>bookmark</code> with no note reads Claude Code's on-disk transcript, distills the last ~40 turns to markdown, stores it as context — <i>no model call</i>.</p></div>
+  </div>
+  <div class="callout">Secret patterns (<code>sk-</code>, <code>ghp_</code>, <code>-----BEGIN</code>) are rejected at the AMP writer, so credentials never reach a git-tracked file.</div>
+</div></section>
+
+<!-- CONTRACTS -->
+<section id="contracts"><div class="wrap">
+  <p class="kicker">The second product</p>
+  <h2>Capability Contracts — opt-in</h2>
+  <p class="lead">One CLI, two products. <strong>Session Memory</strong> (the default, memory-first) is everything above. <strong>Capability Contracts</strong> is an opt-in layer for teams that want CI gates on <i>what the system does</i>, not just its code.</p>
+  <div class="grid2">
+    <div class="box">
+      <h4 style="margin:0 0 8px">Session Memory <span style="color:var(--green);font-size:13.5px">· default</span></h4>
+      <p style="margin:0;font-size:15.5px;color:var(--dim)"><code>log · ask · switch · recap · status · bookmark · refresh</code><br>Mass-market, viral, zero-config. The whole loop above.</p>
+    </div>
+    <div class="box">
+      <h4 style="margin:0 0 8px">Capability Contracts <span style="color:var(--cyan);font-size:13.5px">· init --mode full</span></h4>
+      <p style="margin:0;font-size:15.5px;color:var(--dim)"><code>context · check · git-drift</code> + <code>inferno/</code> dir (capabilities.json, scenarios). CI gate via the <code>infernoflow/action@v1</code> GitHub Action.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- SYNC -->
+<section id="sync"><div class="wrap">
+  <p class="kicker">Branch model &amp; sync</p>
+  <h2>Memory that travels — with the branch, and across machines</h2>
+  <div class="grid2">
+    <div>
+      <h3>Branch-aware (team)</h3>
+      <p>Captures on a feature branch travel with it via git. A teammate runs <code>git checkout feature-auth</code>; the JSONL is there, their MCP server boots, regenerates their rule files — their AI is warm-started on <i>your</i> findings, no message sent.</p>
+    </div>
+    <div>
+      <h3>Cross-machine (personal)</h3>
+      <p>Personal preferences in <code>global.jsonl</code> follow <i>you</i>. Point at any OS-synced folder once — <code>infernoflow sync set ~/Dropbox/…</code> — and home → work → home just works. No infra to stand up; the OS does the sync.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- COMPONENTS -->
+<section id="components"><div class="wrap">
+  <p class="kicker">Repository map</p>
+  <h2>Components &amp; build</h2>
+  <div class="grid2">
+    <div>
+      <pre><span class="k">bin/</span>infernoflow.mjs      <span class="c">CLI router (~22 verbs)</span>
+<span class="k">lib/</span>
+├── commands/           <span class="c">log, ask, switch, bookmark,</span>
+│                       <span class="c">context, check, doctor, …</span>
+├── amp/io.mjs          <span class="c">AMP read/write core</span>
+├── ruleFiles.mjs       <span class="c">injection / refresh</span>
+├── learning/           <span class="c">profile, observe, adapt</span>
+├── git/                <span class="c">drift detection</span>
+├── ai/                 <span class="c">optional provider router</span>
+├── adopters/           <span class="c">framework adopters</span>
+├── mcpRuntime.mjs      <span class="c">MCP runtime stamp</span>
+└── ui/                 <span class="c">terminal output + prompts</span>
+<span class="k">vscode-extension/</span>      <span class="c">companion extension</span>
+<span class="k">action/</span>               <span class="c">GitHub Action v1</span>
+<span class="k">templates/</span>            <span class="c">hooks, MCP server, CI</span>
+<span class="k">dist/</span>                 <span class="c">esbuild output (committed)</span></pre>
+    </div>
+    <div>
+      <h3>Build &amp; test</h3>
+      <ul class="clean">
+        <li><strong>Bundler:</strong> <code>node build.mjs</code> — esbuild, single pass into <code>dist/</code>.</li>
+        <li><strong>Zero runtime deps:</strong> Node ≥ 18, no <code>postinstall</code>. <code>npm i -g</code> only copies files.</li>
+        <li><strong>Tests:</strong> <code>npm test</code> runs the <code>scripts/*-smoke.mjs</code> chain end-to-end.</li>
+        <li><strong>Extension:</strong> window-only in 0.7.9+ — the CLI is the single canonical writer of rule files, so there's no race.</li>
+      </ul>
+      <h3>VS Code extension surface</h3>
+      <p style="font-size:15.5px">Live sidebar (ranked by file), gotchas as <strong>Problems</strong> (yellow squigglies Copilot also sees), status-bar health score, keyboard-first logging (<code>Ctrl+Alt+G/D/A/S/R</code>). Registers <code>amp_write</code>/<code>amp_read</code> as VS Code Language Model Tools.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- SECURITY -->
+<section id="security"><div class="wrap">
+  <p class="kicker">Security &amp; privacy</p>
+  <h2>Local-first by construction</h2>
+  <div class="grid3">
+    <div class="pcard"><div class="ic">🚫</div><h4>No telemetry</h4><p>No analytics, no error reporting, no install pings.</p></div>
+    <div class="pcard"><div class="ic">🚫</div><h4>No postinstall</h4><p><code>npm i -g infernoflow</code> runs no code — it copies files.</p></div>
+    <div class="pcard"><div class="ic">🚫</div><h4>No network in default path</h4><p>Every default command runs entirely on your machine.</p></div>
+    <div class="pcard"><div class="ic">✅</div><h4>Project-scoped I/O</h4><p>Reads/writes only inside <code>.ai-memory/</code> and the three rule files at repo root.</p></div>
+    <div class="pcard"><div class="ic">✅</div><h4>Marker-bounded edits</h4><p>Auto-content is wrapped in markers; your edits outside are untouched.</p></div>
+    <div class="pcard"><div class="ic">✅</div><h4>Secret rejection</h4><p>Entries matching secret patterns are refused at capture.</p></div>
+  </div>
+  <p style="font-size:15px;color:var(--dim);margin-top:16px">The optional <code>infernoflow ai setup</code> wires a provider (Anthropic / OpenAI / Google / Ollama) for a few enrichment commands — same trust model as using that provider directly. Off by default.</p>
+</div></section>
+
+<!-- PRINCIPLES -->
+<section id="principles" style="border-bottom:0"><div class="wrap">
+  <p class="kicker">Design principles</p>
+  <h2>What holds it together</h2>
+  <div class="grid2">
+    <div class="pcard"><h4>🔒 Local-first, zero-dep</h4><p>Plain files, no service, no runtime dependencies. The moat is that it's boring infrastructure — set once, forget, like <code>.gitignore</code>.</p></div>
+    <div class="pcard"><h4>🔌 Vendor-neutral (AMP)</h4><p>An open protocol, not a format lock. Any AMP-Full client needs only the six <code>amp_*</code> tool names.</p></div>
+    <div class="pcard"><h4>⚡ Transparent automation</h4><p>One install, everything wired — no separate setup steps, no manual rebuilds, no "now go install the other half".</p></div>
+    <div class="pcard"><h4>🎯 It feeds agents, it isn't one</h4><p>infernoflow never runs your coding agent. It's the memory Cursor / Claude / Copilot read — that's the wedge, and it's deliberate.</p></div>
+  </div>
+</div></section>
+
+<hr class="fire-line">
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">🔥 <span>inferno</span>flow</div>
+    <div class="footer-links">
+      <a href="/architecture">Architecture</a>
+      <a href="https://www.npmjs.com/package/infernoflow" target="_blank">npm</a>
+      <a href="mailto:hello@infernoflow.dev">Contact</a>
+    </div>
+    <div class="footer-copy">MIT License · <a href="https://github.com/ronmiz/infernoflow">GitHub</a> · <a href="https://github.com/ronmiz/infernoflow/blob/main/docs/protocol/PROTOCOL.md">AMP spec</a></div>
+  </div>
+</footer>
+
+</body>
+</html>
