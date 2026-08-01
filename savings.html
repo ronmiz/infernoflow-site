@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>infernoflow — Token Savings Calculator</title>
+<meta name="description" content="Estimate how many tokens infernoflow saves your AI coding sessions — a transparent model that counts both the savings and the injection cost." />
+<meta property="og:title" content="infernoflow — Token Savings Calculator" />
+<meta property="og:url" content="https://infernoflow.dev/savings" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>" />
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d0d0f;--bg2:#131316;--bg3:#1a1a1f;--border:#2a2a32;
+    --orange:#f97316;--orange2:#fb923c;--amber:#fbbf24;--green:#3fb950;--red:#f87171;
+    --text:#f1f0ee;--muted:#8b8a96;--code-bg:#1e1e24;
+    --mono:"SF Mono","Fira Code","Cascadia Code",ui-monospace,monospace;
+  }
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Inter",sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  code{font-family:var(--mono)}
+
+  nav{position:sticky;top:0;z-index:100;background:rgba(13,13,15,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
+  .nav-logo{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:700;letter-spacing:-.3px}
+  .nav-logo span{color:var(--orange)}
+  .nav-links{display:flex;align-items:center;gap:22px}
+  .nav-links a{font-size:14px;color:var(--muted);transition:color .15s}
+  .nav-links a:hover,.nav-links a.active{color:var(--text)}
+  .nav-gh{border:1px solid var(--border);border-radius:8px;padding:6px 13px;color:var(--text)!important;font-size:13px;font-weight:500}
+  .nav-gh:hover{border-color:var(--orange);background:rgba(249,115,22,.06)}
+  @media(max-width:720px){.nav-links a.hm{display:none}}
+
+  .head{max-width:1080px;margin:0 auto;padding:64px 24px 8px}
+  .label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--orange);margin-bottom:12px}
+  .head h1{font-size:clamp(30px,5vw,48px);font-weight:800;letter-spacing:-1.2px;line-height:1.1;margin-bottom:16px}
+  .head h1 em{font-style:normal;background:linear-gradient(135deg,var(--orange),var(--amber));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .head p{font-size:clamp(16px,2vw,19px);color:var(--muted);max-width:720px}
+
+  .app{max-width:1080px;margin:0 auto;padding:34px 24px 60px;display:grid;grid-template-columns:1.05fr .95fr;gap:26px;align-items:start}
+  @media(max-width:880px){.app{grid-template-columns:1fr}}
+  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:26px}
+  .panel h2{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:20px}
+
+  .ctrl{margin-bottom:20px}
+  .ctrl .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .ctrl label{font-size:14.5px;font-weight:500}
+  .ctrl .val{font-family:var(--mono);font-size:14px;color:var(--orange2);font-weight:600}
+  .ctrl .val small{color:var(--muted);font-weight:400}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:#40404b;outline:none;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--orange);cursor:pointer;border:3px solid #1a1a1f;box-shadow:0 0 0 1px var(--orange)}
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--orange);cursor:pointer;border:3px solid #1a1a1f}
+  .hint{font-size:12px;color:var(--muted);margin-top:5px}
+  .presets{display:flex;gap:8px;margin-top:12px}
+  .presets button{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:7px 6px;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit}
+  .presets button:hover{color:var(--text);border-color:var(--orange)}
+  .presets button.on{background:rgba(249,115,22,.12);border-color:var(--orange);color:var(--orange2)}
+  .presets button small{display:block;color:var(--muted);font-weight:400;font-size:11px;margin-top:2px}
+
+  .toggle{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;margin-bottom:18px;cursor:pointer}
+  .toggle input{width:0;height:0;opacity:0;position:absolute}
+  .sw{width:44px;height:24px;border-radius:20px;background:#3a3a44;position:relative;transition:.2s;flex-shrink:0}
+  .sw::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s}
+  .toggle input:checked + .sw{background:var(--orange)}
+  .toggle input:checked + .sw::after{transform:translateX(20px)}
+  .toggle .tx{font-size:14px}.toggle .tx b{display:block;font-weight:600}.toggle .tx span{color:var(--muted);font-size:12.5px}
+
+  .num{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+  .num label{font-size:14px;flex:1}
+  .num input{width:96px;background:var(--code-bg);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:9px 11px;font-family:var(--mono);font-size:14px}
+  .num input:focus{outline:none;border-color:var(--orange)}
+
+  /* results */
+  .result{position:sticky;top:80px}
+  .big{background:linear-gradient(160deg,rgba(249,115,22,.10),var(--bg2) 65%);border:1px solid rgba(249,115,22,.4);border-radius:18px;padding:26px;text-align:center;margin-bottom:20px}
+  .big .cap{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px}
+  .big .n{font-size:clamp(38px,7vw,56px);font-weight:800;letter-spacing:-1.5px;line-height:1;background:linear-gradient(135deg,var(--orange),var(--amber));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .big .sub{font-size:14.5px;color:var(--muted);margin-top:8px}
+  .big .dollar{font-size:16px;color:var(--text);margin-top:10px;font-weight:600}
+  .big.neg{border-color:rgba(248,113,113,.5);background:linear-gradient(160deg,rgba(248,113,113,.08),var(--bg2) 65%)}
+  .big.neg .n{background:none;-webkit-text-fill-color:var(--red);color:var(--red)}
+
+  .brk{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px}
+  .brk h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px}
+  .row{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:14px}
+  .row .bar{flex:1;height:10px;border-radius:6px;background:var(--bg3);overflow:hidden}
+  .row .bar i{display:block;height:100%;border-radius:6px}
+  .row .t{width:150px;flex-shrink:0}
+  .row .amt{width:86px;text-align:right;font-family:var(--mono);font-size:13px;flex-shrink:0}
+  .save i{background:var(--green)} .save .amt{color:var(--green)}
+  .cost i{background:var(--orange)} .cost .amt{color:var(--orange2)}
+  .brk .net{border-top:1px solid var(--border);margin-top:6px;padding-top:12px;display:flex;justify-content:space-between;font-weight:700;font-size:15px}
+
+  .note{border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,.05);border-radius:12px;padding:14px 18px;margin:24px auto 0;max-width:1080px;font-size:13.5px;color:var(--muted);line-height:1.6}
+  .note b{color:var(--amber)}
+  .foot{max-width:1080px;margin:26px auto 0;padding:0 24px;font-size:12.5px;color:#6b6b74;line-height:1.6}
+
+  footer{padding:40px 24px;text-align:center;border-top:1px solid var(--border);margin-top:40px}
+  .footer-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+  .footer-logo{font-size:16px;font-weight:700}.footer-logo span{color:var(--orange)}
+  .footer-links{display:flex;gap:22px}.footer-links a{font-size:13px;color:var(--muted)}.footer-links a:hover{color:var(--text)}
+  .footer-copy{font-size:13px;color:var(--muted)}
+  @media(max-width:600px){.footer-inner{flex-direction:column;text-align:center}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">🔥 <span>inferno</span>flow</a>
+  <div class="nav-links">
+    <a href="/">← Home</a>
+    <a href="/architecture" class="hm">Architecture</a>
+    <a href="/savings" class="active">Token Savings</a>
+    <a href="https://www.npmjs.com/package/infernoflow" target="_blank" class="nav-gh">npm</a>
+  </div>
+</nav>
+
+<div class="head">
+  <div class="label">Token savings</div>
+  <h1>How many tokens does<br><em>infernoflow save you?</em></h1>
+  <p>A transparent estimate. It counts the tokens memory <b style="color:var(--text);font-weight:500">saves</b> (avoided re-derivation and repeated mistakes) <em style="font-style:normal;color:var(--orange2)">and</em> the tokens the injected block <b style="color:var(--text);font-weight:500">costs</b> — so the number is honest. Move the sliders to match your setup.</p>
+</div>
+
+<div class="app">
+  <!-- INPUTS -->
+  <div class="panel">
+    <h2>Your setup</h2>
+
+    <div class="ctrl">
+      <div class="top"><label>New AI sessions / month <span style="color:var(--muted)">(per person)</span></label><span class="val" id="v_sess">20</span></div>
+      <input type="range" id="sess" min="2" max="120" step="1" value="20">
+      <div class="presets" id="presets">
+        <button type="button" data-v="20">Light<small>~1 / day</small></button>
+        <button type="button" data-v="40">Typical<small>~2 / day</small></button>
+        <button type="button" data-v="80">Heavy<small>~4 / day</small></button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="top"><label>Team size</label><span class="val" id="v_team">1</span></div>
+      <input type="range" id="team" min="1" max="50" step="1" value="1">
+    </div>
+
+    <div class="ctrl">
+      <div class="top"><label>Files the AI re-reads to re-derive context</label><span class="val" id="v_files">3 <small>avoided</small></span></div>
+      <input type="range" id="files" min="0" max="10" step="1" value="3">
+      <div class="hint">Facts the memory block carries, so the agent skips re-reading these files each session.</div>
+    </div>
+    <div class="ctrl">
+      <div class="top"><label>Avg tokens per file</label><span class="val" id="v_tpf">1,500</span></div>
+      <input type="range" id="tpf" min="300" max="4000" step="100" value="1500">
+    </div>
+    <div class="ctrl">
+      <div class="top"><label>Repeated-mistake cycles avoided / session</label><span class="val" id="v_mist">1</span></div>
+      <input type="range" id="mist" min="0" max="5" step="1" value="1">
+      <div class="hint">One wrong-turn cycle ≈ wrong output + your correction + regeneration.</div>
+    </div>
+    <div class="ctrl">
+      <div class="top"><label>Tokens per mistake cycle</label><span class="val" id="v_tpm">900</span></div>
+      <input type="range" id="tpm" min="200" max="3000" step="100" value="900">
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:22px 0"></div>
+    <h2 style="margin-bottom:16px">The cost side</h2>
+
+    <label class="toggle">
+      <input type="checkbox" id="cache" checked>
+      <span class="sw"></span>
+      <span class="tx"><b>Prompt caching on</b><span>Block counted once/session (cached prefix), not per turn.</span></span>
+    </label>
+
+    <div class="ctrl">
+      <div class="top"><label>Injected memory block size</label><span class="val" id="v_blk">400 <small>tokens</small></span></div>
+      <input type="range" id="blk" min="150" max="1500" step="50" value="400">
+    </div>
+    <div class="ctrl" id="turnsWrap" style="opacity:.4">
+      <div class="top"><label>Turns per session <span style="color:var(--muted)">(only if caching off)</span></label><span class="val" id="v_turns">40</span></div>
+      <input type="range" id="turns" min="5" max="120" step="1" value="40" disabled>
+    </div>
+
+    <div class="num">
+      <label>Blended price ($ / 1M tokens)</label>
+      <input type="number" id="price" value="3" min="0" step="0.5">
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="result">
+    <div class="big" id="bigBox">
+      <div class="cap">Estimated net savings</div>
+      <div class="n" id="monthly">—</div>
+      <div class="sub">tokens / month <span id="teamNote"></span></div>
+      <div class="dollar" id="dollar"></div>
+    </div>
+    <div class="brk">
+      <h3>Per session — where it comes from</h3>
+      <div class="row save"><span class="t">Cold-start re-read</span><span class="bar"><i id="b_cold"></i></span><span class="amt" id="a_cold"></span></div>
+      <div class="row save"><span class="t">Mistakes avoided</span><span class="bar"><i id="b_mist"></i></span><span class="amt" id="a_mist"></span></div>
+      <div class="row cost"><span class="t">− Injection cost</span><span class="bar"><i id="b_inj"></i></span><span class="amt" id="a_inj"></span></div>
+      <div class="row cost"><span class="t">− Capture (amp_write)</span><span class="bar"><i id="b_cap"></i></span><span class="amt" id="a_cap"></span></div>
+      <div class="net"><span>Net / session</span><span id="net" style="font-family:var(--mono)"></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Read this before quoting a number.</b> This is a model, not a measurement — the real figure depends on your codebase and workflow. The biggest, hardest-to-quantify win is <b>your time and lost focus</b>, not tokens. With caching off, a long session's per-turn block cost can eat into savings that are concentrated at session start — which is exactly why infernoflow keeps the injected block lean (~4 entries). infernoflow has <b>no built-in savings meter</b> today; these are estimates from the assumptions above.
+</div>
+<div class="foot" id="capNote"></div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">🔥 <span>inferno</span>flow</div>
+    <div class="footer-links">
+      <a href="/architecture">Architecture</a>
+      <a href="/savings">Token Savings</a>
+      <a href="https://www.npmjs.com/package/infernoflow" target="_blank">npm</a>
+    </div>
+    <div class="footer-copy">MIT License · <a href="https://github.com/ronmiz/infernoflow" style="color:inherit">GitHub</a></div>
+  </div>
+</footer>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const fmt = n => Math.round(n).toLocaleString('en-US');
+  const CAP_TOK = 60; // tokens per amp_write call
+
+  function calc(){
+    const sess=+$('sess').value, team=+$('team').value;
+    const files=+$('files').value, tpf=+$('tpf').value;
+    const mist=+$('mist').value, tpm=+$('tpm').value;
+    const cache=$('cache').checked, blk=+$('blk').value, turns=+$('turns').value;
+    const price=Math.max(0,+$('price').value||0);
+    const ampCalls = Math.max(files+mist, 3);
+
+    const sCold = files*tpf;
+    const sMist = mist*tpm;
+    const cInj  = cache ? blk : blk*turns;
+    const cCap  = ampCalls*CAP_TOK;
+    const net   = sCold + sMist - cInj - cCap;
+    const monthly = net * sess * team;
+
+    // labels
+    $('v_sess').textContent=sess;
+    $('v_team').textContent=team;
+    $('v_files').innerHTML=files+' <small>avoided</small>';
+    $('v_tpf').textContent=fmt(tpf);
+    $('v_mist').textContent=mist;
+    $('v_tpm').textContent=fmt(tpm);
+    $('v_blk').innerHTML=fmt(blk)+' <small>tokens</small>';
+    $('v_turns').textContent=turns;
+
+    // breakdown bars (scale to max magnitude)
+    const mx=Math.max(sCold,sMist,cInj,cCap,1);
+    const pct=v=>Math.max(2,100*v/mx)+'%';
+    $('b_cold').style.width=pct(sCold); $('a_cold').textContent='+'+fmt(sCold);
+    $('b_mist').style.width=pct(sMist); $('a_mist').textContent='+'+fmt(sMist);
+    $('b_inj').style.width=pct(cInj);   $('a_inj').textContent='−'+fmt(cInj);
+    $('b_cap').style.width=pct(cCap);   $('a_cap').textContent='−'+fmt(cCap);
+    $('net').textContent=(net>=0?'+':'−')+fmt(Math.abs(net));
+    $('net').style.color = net>=0?'var(--green)':'var(--red)';
+
+    // headline
+    const box=$('bigBox');
+    box.classList.toggle('neg', monthly<0);
+    $('monthly').textContent=(monthly<0?'−':'')+fmt(Math.abs(monthly));
+    $('teamNote').textContent = team>1 ? '· across '+team+' people' : '';
+    $('dollar').textContent = price>0 ? '≈ $'+ (Math.abs(monthly)/1e6*price).toLocaleString('en-US',{maximumFractionDigits:2}) + (monthly<0?' extra / month':' saved / month') : '';
+    $('capNote').textContent='Assumes '+ampCalls+' amp_write calls/session (~'+CAP_TOK+' tokens each). '+(cache?'Injection counted once per session (caching on).':'Injection counted across '+turns+' turns (caching off).');
+    updatePresets();
+  }
+  const presetBtns=[...document.querySelectorAll('#presets button')];
+  presetBtns.forEach(btn=>btn.addEventListener('click',()=>{ $('sess').value=btn.dataset.v; calc(); }));
+  function updatePresets(){ const v=$('sess').value; presetBtns.forEach(b=>b.classList.toggle('on', b.dataset.v===v)); }
+
+  ['sess','team','files','tpf','mist','tpm','blk','turns','price'].forEach(id=>{
+    $(id).addEventListener('input',calc);
+  });
+  $('cache').addEventListener('change',()=>{
+    const on=$('cache').checked;
+    $('turns').disabled=on;
+    $('turnsWrap').style.opacity=on?.4:1;
+    calc();
+  });
+  calc();
+</script>
+</body>
+</html>

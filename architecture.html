@@ -143,7 +143,8 @@
   @media(max-width:640px){.footer-inner{flex-direction:column;text-align:center}}
   .fire-line{height:3px;background:linear-gradient(90deg,var(--orange),var(--red),transparent);border:0;margin:0}
   @media print{
-    nav.toc{display:none!important}
+    nav.toc,.site-nav{display:none!important}
+    #flow svg{break-inside:avoid}
     section{padding:26px 0!important;break-inside:avoid}
     header.hero{padding:34px 0 26px!important}
     .box,.pcard,.layer,.stage,pre,table,.loop,.grid2,.grid3,.callout{break-inside:avoid}
@@ -161,6 +162,7 @@
     <a href="/#features" class="hm">Features</a>
     <a href="/#how-it-works" class="hm">How it works</a>
     <a href="/architecture" class="active">Architecture</a>
+    <a href="/savings" class="hm">Token Savings</a>
     <a href="https://www.npmjs.com/package/infernoflow" target="_blank" class="site-gh">npm</a>
   </div>
 </nav>
@@ -583,6 +585,7 @@
     <div class="footer-logo">🔥 <span>inferno</span>flow</div>
     <div class="footer-links">
       <a href="/architecture">Architecture</a>
+      <a href="/savings">Token Savings</a>
       <a href="https://www.npmjs.com/package/infernoflow" target="_blank">npm</a>
       <a href="mailto:hello@infernoflow.dev">Contact</a>
     </div>
