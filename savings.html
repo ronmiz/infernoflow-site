@@ -79,6 +79,8 @@
   .big .dollar{font-size:16px;color:var(--text);margin-top:10px;font-weight:600}
   .big.neg{border-color:rgba(248,113,113,.5);background:linear-gradient(160deg,rgba(248,113,113,.08),var(--bg2) 65%)}
   .big.neg .n{background:none;-webkit-text-fill-color:var(--red);color:var(--red)}
+  .big.time{border-color:rgba(63,185,80,.4);background:linear-gradient(160deg,rgba(63,185,80,.10),var(--bg2) 65%);margin-bottom:20px}
+  .big.time .n{background:linear-gradient(135deg,var(--green),#7ee08a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 
   .brk{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px}
   .brk h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px}
@@ -160,6 +162,18 @@
     </div>
 
     <div style="height:1px;background:var(--border);margin:22px 0"></div>
+    <h2 style="margin-bottom:16px">Your time — the real value</h2>
+    <div class="ctrl">
+      <div class="top"><label>Minutes of your time saved / session</label><span class="val" id="v_min">10</span></div>
+      <input type="range" id="mins" min="0" max="45" step="1" value="10">
+      <div class="hint">Re-explaining context, waiting on re-derivation, fixing the same mistake again.</div>
+    </div>
+    <div class="num">
+      <label>Your hourly rate ($)</label>
+      <input type="number" id="rate" value="60" min="0" step="5">
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:22px 0"></div>
     <h2 style="margin-bottom:16px">The cost side</h2>
 
     <label class="toggle">
@@ -177,10 +191,6 @@
       <input type="range" id="turns" min="5" max="120" step="1" value="40" disabled>
     </div>
 
-    <div class="num">
-      <label>Blended price ($ / 1M tokens)</label>
-      <input type="number" id="price" value="3" min="0" step="0.5">
-    </div>
   </div>
 
   <!-- RESULTS -->
@@ -189,7 +199,11 @@
       <div class="cap">Estimated net savings</div>
       <div class="n" id="monthly">—</div>
       <div class="sub">tokens / month <span id="teamNote"></span></div>
-      <div class="dollar" id="dollar"></div>
+    </div>
+    <div class="big time">
+      <div class="cap">Your time — the real value</div>
+      <div class="n" id="timeDollar">—</div>
+      <div class="sub"><span id="hours">—</span> hours / month <span id="teamNote2"></span></div>
     </div>
     <div class="brk">
       <h3>Per session — where it comes from</h3>
@@ -203,7 +217,7 @@
 </div>
 
 <div class="note">
-  <b>Read this before quoting a number.</b> This is a model, not a measurement — the real figure depends on your codebase and workflow. The biggest, hardest-to-quantify win is <b>your time and lost focus</b>, not tokens. With caching off, a long session's per-turn block cost can eat into savings that are concentrated at session start — which is exactly why infernoflow keeps the injected block lean (~4 entries). infernoflow has <b>no built-in savings meter</b> today; these are estimates from the assumptions above.
+  <b>Read this before quoting a number.</b> This is a model, not a measurement — the real figure depends on your codebase and workflow. The biggest win is <b>your time and lost focus</b> — which is why the dollar figure here is based on time saved, not tokens (token cost is negligible and varies by plan anyway). With caching off, a long session's per-turn block cost can eat into savings that are concentrated at session start — which is exactly why infernoflow keeps the injected block lean (~4 entries). infernoflow has <b>no built-in savings meter</b> today; these are estimates from the assumptions above.
 </div>
 <div class="foot" id="capNote"></div>
 
@@ -229,7 +243,7 @@
     const files=+$('files').value, tpf=+$('tpf').value;
     const mist=+$('mist').value, tpm=+$('tpm').value;
     const cache=$('cache').checked, blk=+$('blk').value, turns=+$('turns').value;
-    const price=Math.max(0,+$('price').value||0);
+    const mins=+$('mins').value, rate=Math.max(0,+$('rate').value||0);
     const ampCalls = Math.max(files+mist, 3);
 
     const sCold = files*tpf;
@@ -264,7 +278,12 @@
     box.classList.toggle('neg', monthly<0);
     $('monthly').textContent=(monthly<0?'−':'')+fmt(Math.abs(monthly));
     $('teamNote').textContent = team>1 ? '· across '+team+' people' : '';
-    $('dollar').textContent = price>0 ? '≈ $'+ (Math.abs(monthly)/1e6*price).toLocaleString('en-US',{maximumFractionDigits:2}) + (monthly<0?' extra / month':' saved / month') : '';
+    // time value
+    const hours = mins*sess*team/60;
+    $('v_min').textContent=mins;
+    $('hours').textContent = hours>=100 ? fmt(hours) : hours.toFixed(hours<10?1:0);
+    $('timeDollar').textContent = rate>0 ? '$'+fmt(hours*rate) : Math.round(hours)+' hrs';
+    $('teamNote2').textContent = team>1 ? '· across '+team+' people' : '';
     $('capNote').textContent='Assumes '+ampCalls+' amp_write calls/session (~'+CAP_TOK+' tokens each). '+(cache?'Injection counted once per session (caching on).':'Injection counted across '+turns+' turns (caching off).');
     updatePresets();
   }
@@ -272,7 +291,7 @@
   presetBtns.forEach(btn=>btn.addEventListener('click',()=>{ $('sess').value=btn.dataset.v; calc(); }));
   function updatePresets(){ const v=$('sess').value; presetBtns.forEach(b=>b.classList.toggle('on', b.dataset.v===v)); }
 
-  ['sess','team','files','tpf','mist','tpm','blk','turns','price'].forEach(id=>{
+  ['sess','team','files','tpf','mist','tpm','blk','turns','mins','rate'].forEach(id=>{
     $(id).addEventListener('input',calc);
   });
   $('cache').addEventListener('change',()=>{
