@@ -249,7 +249,7 @@
     <div class="layer storage"><span class="lname">Storage — plain files, git-tracked</span>
       <div class="nodes">
         <div class="node"><div class="t">.ai-memory/branches/*.jsonl</div><div class="d">per-branch, travels via git</div></div>
-        <div class="node"><div class="t">details/*.md</div><div class="d">tier-2 rich bodies</div></div>
+        <div class="node"><div class="t">details.jsonl</div><div class="d">tier-2 rich bodies</div></div>
         <div class="node"><div class="t">global.jsonl</div><div class="d">personal, gitignored</div></div>
         <div class="node"><div class="t">amp.json</div><div class="d">config</div></div>
       </div>
@@ -364,7 +364,7 @@
   <span class="p">"tags"</span>:  [<span class="s">"auth"</span>,<span class="s">"http"</span>],
   <span class="p">"ts"</span>:    <span class="s">"2026-07-31T08:12:03Z"</span>,
   <span class="p">"agent"</span>: <span class="s">"infernoflow"</span>,          <span class="c">// who wrote it: user | infernoflow</span>
-  <span class="p">"detail"</span>: <span class="s">"amp_01KY…"</span>            <span class="c">// optional → details/&lt;id&gt;.md</span>
+  <span class="p">"detail"</span>: <span class="s">"amp_01KY…"</span>            <span class="c">// optional → details.jsonl</span>
 }</pre>
     </div>
     <div>
@@ -385,7 +385,7 @@
     </div>
   </div>
   <h3>Two-tier bodies</h3>
-  <p>The lean <strong>index</strong> (msg + file:line) is what gets injected and stays cheap. A rich <code>detail</code> body lives in <code>details/&lt;id&gt;.md</code>, loaded on demand via <code>readDetail()</code> and <strong>never injected</strong> into rule files — you pay for the body only when you open it.</p>
+  <p>The lean <strong>index</strong> (msg + file:line) is what gets injected and stays cheap. A rich <code>detail</code> body lives in a single <code>details.jsonl</code>, loaded on demand via <code>readDetail()</code> and <strong>never injected</strong> into rule files — you pay for the body only when you open it.</p>
 </div></section>
 
 <!-- STORAGE -->
@@ -398,8 +398,7 @@
 ├── <span class="b">branches/</span>
 │   ├── main.jsonl          <span class="c">project truths (git-tracked)</span>
 │   └── feature-auth.jsonl  <span class="c">branch work (git-tracked)</span>
-├── <span class="b">details/</span>
-│   └── amp_01KY….md        <span class="c">tier-2 bodies (on demand)</span>
+├── details.jsonl           <span class="c">tier-2 bodies (on demand)</span>
 ├── <span class="b">archive/</span>
 │   └── sessions-2026-07.jsonl  <span class="c">rotated-out</span>
 ├── global.jsonl            <span class="c">personal prefs (gitignored)</span>
@@ -425,7 +424,7 @@
   <table>
     <thead><tr><th>Tool</th><th>Reads from</th><th>Writes via</th></tr></thead>
     <tbody>
-      <tr><td>Claude Code</td><td><code>CLAUDE.md</code></td><td>MCP (<code>amp_write</code>)</td></tr>
+      <tr><td>Claude Code</td><td><code>CLAUDE.md</code> + <code>.claude/</code> skill</td><td>MCP (<code>amp_write</code>) + <code>memory-keeper</code> agent</td></tr>
       <tr><td>Cursor</td><td><code>.cursorrules</code></td><td>MCP + <code>beforeSubmitPrompt</code> hook</td></tr>
       <tr><td>GitHub Copilot (VS Code)</td><td><code>.github/copilot-instructions.md</code></td><td>VS Code LMT + MCP — both wired</td></tr>
       <tr><td>Windsurf</td><td><code>.windsurfrules</code></td><td>MCP (manual wiring)</td></tr>
@@ -480,6 +479,7 @@
     <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">3 · Transcript distillation</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A <code>bookmark</code> with no note reads Claude Code's on-disk transcript, distills the last ~40 turns to markdown, stores it as context — <i>no model call</i>.</p></div>
   </div>
   <div class="callout">Secret patterns (<code>sk-</code>, <code>ghp_</code>, <code>-----BEGIN</code>) are rejected at the AMP writer, so credentials never reach a git-tracked file.</div>
+  <div class="callout">On <b>Claude Code</b>, an installed <code>infernoflow-memory</code> skill makes capture proactive out of the box, and a <code>memory-keeper</code> subagent can be delegated to sweep a session and log what matters. Cursor &amp; Copilot get the same &ldquo;when to capture&rdquo; guidance through their rule-file protocol + MCP.</div>
 </div></section>
 
 <!-- CONTRACTS -->
