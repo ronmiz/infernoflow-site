@@ -169,14 +169,14 @@
 
 <header class="hero">
   <div class="wrap">
-    <div class="brandrow"><span class="flame">🔥</span><h1>infernoflow</h1><span class="ver">v0.44.17</span></div>
+    <div class="brandrow"><span class="flame">🔥</span><h1>infernoflow</h1><span class="ver">v0.46.1</span></div>
     <p class="tagline">A <b>local-first persistent memory layer</b> for AI coding sessions. It captures the gotchas, decisions and dead-ends your <b>code can't tell an agent</b> — and replays them into the next Cursor / Claude&nbsp;Code / Copilot session, so the same wrong turn never happens twice.</p>
     <div class="metarow">
       <span class="pill">runtime deps <b>0</b></span>
       <span class="pill">storage <b>JSONL on disk</b></span>
       <span class="pill">protocol <b>AMP (open)</b></span>
       <span class="pill">transports <b>MCP · LMT · CLI</b></span>
-      <span class="pill">telemetry <b>none</b></span>
+      <span class="pill">telemetry <b>opt-in, off</b></span>
       <span class="pill">license <b>MIT</b></span>
     </div>
   </div>
@@ -215,12 +215,12 @@
 <section id="overview"><div class="wrap">
   <p class="kicker">System overview</p>
   <h2>Four layers, one disk file</h2>
-  <p class="lead">Clients talk to infernoflow over several interchangeable transports; a small deterministic core reads and writes a single on-disk memory store and keeps the IDE rule files current. No service, no daemon, no network in the default path.</p>
+  <p class="lead">Clients talk to infernoflow over several interchangeable transports; a small deterministic core reads and writes a single on-disk memory store and keeps the IDE rule files current. No service, no daemon, no network in the default path (telemetry is opt-in).</p>
 
   <div class="layers">
     <div class="layer clients"><span class="lname">Clients — AI agents</span>
       <div class="nodes">
-        <div class="node"><div class="t">Claude Code</div><div class="d">reads CLAUDE.md</div></div>
+        <div class="node"><div class="t">Claude Code</div><div class="d">session-start hook</div></div>
         <div class="node"><div class="t">Cursor</div><div class="d">reads .cursorrules</div></div>
         <div class="node"><div class="t">GitHub Copilot</div><div class="d">copilot-instructions.md</div></div>
         <div class="node"><div class="t">Windsurf</div><div class="d">.windsurfrules</div></div>
@@ -297,7 +297,7 @@
     <text x="560" y="260" text-anchor="middle" fill="#8b949e" font-size="15">warm start, no cold derivation</text>
     <!-- arrow labels -->
     <text x="950" y="228" fill="#6e7681" font-size="13">MCP boot</text>
-    <text x="950" y="248" fill="#6e7681" font-size="13">/ commit</text>
+    <text x="950" y="248" fill="#6e7681" font-size="13">/ session start</text>
     <!-- nodes -->
     <g>
       <rect x="36" y="44" width="300" height="92" rx="12" fill="#161b22" stroke="#6e7681" stroke-width="1.6"/>
@@ -332,7 +332,7 @@
       <circle cx="440" cy="374" r="14" fill="#1c2230" stroke="#58a6ff" stroke-width="1.4"/>
       <text x="440" y="379" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">5</text>
       <text x="466" y="381" fill="#e6edf3" font-size="19" font-weight="700">Rule files</text>
-      <text x="432" y="414" fill="#8b949e" font-size="14" font-family="ui-monospace,'SF Mono',Menlo,monospace">CLAUDE.md · .cursorrules</text>
+      <text x="432" y="414" fill="#8b949e" font-size="14" font-family="ui-monospace,'SF Mono',Menlo,monospace">session hook · .cursorrules</text>
     </g>
     <g>
       <rect x="36" y="344" width="300" height="92" rx="12" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
@@ -424,17 +424,17 @@
   <table>
     <thead><tr><th>Tool</th><th>Reads from</th><th>Writes via</th></tr></thead>
     <tbody>
-      <tr><td>Claude Code</td><td><code>CLAUDE.md</code> + <code>.claude/</code> skill</td><td>MCP (<code>amp_write</code>) + <code>memory-keeper</code> agent</td></tr>
+      <tr><td>Claude Code</td><td>SessionStart hook (fresh each session) + <code>.claude/</code> skill</td><td>MCP (<code>amp_write</code>) + <code>memory-keeper</code> agent</td></tr>
       <tr><td>Cursor</td><td><code>.cursorrules</code></td><td>MCP + <code>beforeSubmitPrompt</code> hook</td></tr>
       <tr><td>GitHub Copilot (VS Code)</td><td><code>.github/copilot-instructions.md</code></td><td>VS Code LMT + MCP — both wired</td></tr>
       <tr><td>Windsurf</td><td><code>.windsurfrules</code></td><td>MCP (manual wiring)</td></tr>
     </tbody>
   </table>
   <h3>MCP tool surface</h3>
-  <p>When the server is wired, the agent calls these directly. The six <code>amp_*</code> tools follow the AMP MCP spec — vendor-neutral — and are mirrored as CLI aliases name-for-name.</p>
+  <p>When the server is wired, the agent calls these directly. The seven <code>amp_*</code> tools follow the AMP MCP spec — vendor-neutral — and are mirrored as CLI aliases name-for-name.</p>
   <div>
     <span class="tag">amp_write</span><span class="tag">amp_read</span><span class="tag">amp_search</span>
-    <span class="tag">amp_bookmark</span><span class="tag">amp_handoff</span><span class="tag">amp_health</span>
+    <span class="tag">amp_bookmark</span><span class="tag">amp_handoff</span><span class="tag">amp_health</span><span class="tag">amp_resume</span>
     <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_status</span>
     <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_check</span>
     <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_context</span>
@@ -461,7 +461,7 @@
       <ul class="clean">
         <li><strong>MCP server boot</strong> — the canonical moment rule files regenerate from memory.</li>
         <li><strong><code>infernoflow refresh</code></strong> — manual rebuild; <code>--targets</code> controls which files carry the block.</li>
-        <li><strong>git post-commit hook</strong> — keeps the block honest as work lands.</li>
+        <li><strong>Claude Code session start</strong> — a hook prints fresh memory into each new session, so Claude Code doesn't depend on a copy in <code>CLAUDE.md</code>.</li>
         <li><strong>Content-hash guard</strong> — only rewrites when content actually changed, so the tree stays clean.</li>
       </ul>
       <p style="font-size:14.5px;color:var(--faint)">Note: a running MCP server loads once at session start — after an upgrade, quit &amp; reopen the IDE. <code>infernoflow doctor</code> flags a runtime/CLI version mismatch.</p>
@@ -476,9 +476,9 @@
   <div class="grid3">
     <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">1 · AI-driven</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A protocol block in the rule files teaches the agent <i>when</i> to call <code>amp_write</code>: on a gotcha hit, a decision, a failed fix, a pattern.</p></div>
     <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">2 · Hook backstop</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A Cursor <code>beforeSubmitPrompt</code> hook scans your prompt for triggers (<code>!!</code>, <code>retry</code>, <code>not working</code>, <code>bookmark this</code>) and writes the entry deterministically when the AI doesn't.</p></div>
-    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">3 · Transcript distillation</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A <code>bookmark</code> with no note reads Claude Code's on-disk transcript, distills the last ~40 turns to markdown, stores it as context — <i>no model call</i>.</p></div>
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">3 · Transcript distillation</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A <code>bookmark</code> with no note reads Claude Code's on-disk transcript, distills the last ~40 turns to markdown, stores it as context on this machine only (gitignored) — <i>no model call</i>.</p></div>
   </div>
-  <div class="callout">Secret patterns (<code>sk-</code>, <code>ghp_</code>, <code>-----BEGIN</code>) are rejected at the AMP writer, so credentials never reach a git-tracked file.</div>
+  <div class="callout">Known secret formats (API keys and tokens, JWTs, private keys, credentials in URLs, <code>password=</code>-style values) are <b>redacted</b> at the AMP writer and stored as <code>[REDACTED:&lt;kind&gt;]</code>. The filter is pattern-based — review <code>.ai-memory/</code> diffs like code.</div>
   <div class="callout">On <b>Claude Code</b>, an installed <code>infernoflow-memory</code> skill makes capture proactive out of the box, and a <code>memory-keeper</code> subagent can be delegated to sweep a session and log what matters. Cursor &amp; Copilot get the same &ldquo;when to capture&rdquo; guidance through their rule-file protocol + MCP.</div>
 </div></section>
 
@@ -494,7 +494,7 @@
     </div>
     <div class="box">
       <h4 style="margin:0 0 8px">Capability Contracts <span style="color:var(--cyan);font-size:13.5px">· init --mode full</span></h4>
-      <p style="margin:0;font-size:15.5px;color:var(--dim)"><code>context · check · git-drift</code> + <code>inferno/</code> dir (capabilities.json, scenarios). CI gate via the <code>infernoflow/action@v1</code> GitHub Action.</p>
+      <p style="margin:0;font-size:15.5px;color:var(--dim)"><code>context · check · git-drift</code> + <code>inferno/</code> dir (capabilities.json, scenarios). PR comments via the <code>ronmiz/infernoflow/action@action-v3</code> GitHub Action — including memory added or changed in the PR.</p>
     </div>
   </div>
 </div></section>
@@ -534,7 +534,7 @@
 ├── mcpRuntime.mjs      <span class="c">MCP runtime stamp</span>
 └── ui/                 <span class="c">terminal output + prompts</span>
 <span class="k">vscode-extension/</span>      <span class="c">companion extension</span>
-<span class="k">action/</span>               <span class="c">GitHub Action v1</span>
+<span class="k">action/</span>               <span class="c">GitHub Action (PR memory check)</span>
 <span class="k">templates/</span>            <span class="c">hooks, MCP server, CI</span>
 <span class="k">dist/</span>                 <span class="c">esbuild output (committed)</span></pre>
     </div>
@@ -543,7 +543,7 @@
       <ul class="clean">
         <li><strong>Bundler:</strong> <code>node build.mjs</code> — esbuild, single pass into <code>dist/</code>.</li>
         <li><strong>Zero runtime deps:</strong> Node ≥ 18, no <code>postinstall</code>. <code>npm i -g</code> only copies files.</li>
-        <li><strong>Tests:</strong> <code>npm test</code> runs the <code>scripts/*-smoke.mjs</code> chain end-to-end.</li>
+        <li><strong>Tests:</strong> <code>npm test</code> runs the vitest suite (300+ tests, including security regressions).</li>
         <li><strong>Extension:</strong> window-only in 0.7.9+ — the CLI is the single canonical writer of rule files, so there's no race.</li>
       </ul>
       <h3>VS Code extension surface</h3>
@@ -557,12 +557,15 @@
   <p class="kicker">Security &amp; privacy</p>
   <h2>Local-first by construction</h2>
   <div class="grid3">
-    <div class="pcard"><div class="ic">🚫</div><h4>No telemetry</h4><p>No analytics, no error reporting, no install pings.</p></div>
+    <div class="pcard"><div class="ic">✅</div><h4>Telemetry opt-in, off by default</h4><p>Asked once; nothing is sent unless you say yes. Never code, paths or memory content.</p></div>
     <div class="pcard"><div class="ic">🚫</div><h4>No postinstall</h4><p><code>npm i -g infernoflow</code> runs no code — it copies files.</p></div>
     <div class="pcard"><div class="ic">🚫</div><h4>No network in default path</h4><p>Every default command runs entirely on your machine.</p></div>
-    <div class="pcard"><div class="ic">✅</div><h4>Project-scoped I/O</h4><p>Reads/writes only inside <code>.ai-memory/</code> and the three rule files at repo root.</p></div>
+    <div class="pcard"><div class="ic">✅</div><h4>Per-project wiring</h4><p>Memory, MCP config and hooks live in the project. Outside it: personal settings and keys in <code>~/.infernoflow/</code>, and one entry per project in Claude Desktop’s config.</p></div>
     <div class="pcard"><div class="ic">✅</div><h4>Marker-bounded edits</h4><p>Auto-content is wrapped in markers; your edits outside are untouched.</p></div>
-    <div class="pcard"><div class="ic">✅</div><h4>Secret rejection</h4><p>Entries matching secret patterns are refused at capture.</p></div>
+    <div class="pcard"><div class="ic">✅</div><h4>Secrets redacted</h4><p>Known token and key formats are replaced with <code>[REDACTED]</code> before anything is written.</p></div>
+    <div class="pcard"><div class="ic">✅</div><h4>Read-only pre-approval</h4><p>Only infernoflow’s read tools are pre-approved; tools that write memory ask first.</p></div>
+    <div class="pcard"><div class="ic">✅</div><h4>Review what arrives</h4><p>Memory from teammates is framed as data, listed until you review it, and shown in each PR by the GitHub Action.</p></div>
+    <div class="pcard"><div class="ic">✅</div><h4>Guarded agent</h4><p>The <code>memory-keeper</code> agent may only run single <code>infernoflow</code> read/log commands. No shell is used to run commands.</p></div>
   </div>
   <p style="font-size:15px;color:var(--dim);margin-top:16px">The optional <code>infernoflow ai setup</code> wires a provider (Anthropic / OpenAI / Google / Ollama) for a few enrichment commands — same trust model as using that provider directly. Off by default.</p>
 </div></section>
