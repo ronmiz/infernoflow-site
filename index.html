@@ -393,7 +393,7 @@
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-badge">🔥 v0.46.3 — one focused thing: persistent memory for AI sessions</div>
+  <div class="hero-badge">🔥 v0.46.5 — one focused thing: persistent memory for AI sessions</div>
   <h1>Your AI can read your code.<br><em>infernoflow tells it everything your code doesn't say.</em></h1>
   <p class="hero-sub">
     Persistent memory for AI coding sessions. Captures <strong>decisions, gotchas, and context</strong> — the stuff that lives in your head, not your codebase.
@@ -449,6 +449,11 @@
         <p>On Claude Code, a session-start hook loads current memory into every new session, and a session-end hook leaves a resume point. <code>infernoflow resume</code> answers “where were we?” in one call.</p>
       </div>
       <div class="feature-card">
+        <div class="feature-icon">🧹</div>
+        <h3>Memory that stays clean</h3>
+        <p>When duplicates, old commit notes or entries about files that changed since start piling up, <code>status</code>, <code>recap</code> and the session start say so and name the command to run. Prefer hands-off? Set maintenance to <code>auto</code> and the noise is archived and cleared once a day. Gotchas and decisions are never touched.</p>
+      </div>
+      <div class="feature-card">
         <div class="feature-icon">⚡</div>
         <h3>Instant context switching</h3>
         <p>Run <code>infernoflow switch</code> to generate a full handoff — open threads, git activity, session duration, and next steps.</p>
@@ -466,7 +471,7 @@
       <div class="feature-card">
         <div class="feature-icon">📡</div>
         <h3>MCP server included</h3>
-        <p>Ships with MCP tools your AI calls automatically — <code>amp_read</code>, <code>amp_write</code>, <code>amp_resume</code>, <code>amp_bookmark</code> and more — registered per project. Only the read-only tools are pre-approved.</p>
+        <p>Ships with MCP tools your AI calls automatically — <code>amp_read</code>, <code>amp_write</code>, <code>amp_resume</code>, <code>amp_bookmark</code> and more — registered per project. Only the read-only tools are pre-approved. Listed on the official MCP Registry (<code>io.github.ronmiz/infernoflow</code>) and on <a href="https://glama.ai/mcp/servers/ronmiz/infernoflow" target="_blank" rel="noopener" style="text-decoration:underline">Glama</a>.</p>
       </div>
     </div>
   </div>
