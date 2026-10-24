@@ -192,6 +192,8 @@
   <a href="#transports">Transports</a>
   <a href="#injection">Injection &amp; refresh</a>
   <a href="#capture">Capture pipeline</a>
+  <a href="#claude-code">Skill &amp; agent</a>
+  <a href="#hygiene">Memory hygiene</a>
   <a href="#contracts">Contracts</a>
   <a href="#sync">Branch &amp; sync</a>
   <a href="#components">Components</a>
@@ -220,14 +222,14 @@
   <div class="layers">
     <div class="layer clients"><span class="lname">Clients — AI agents</span>
       <div class="nodes">
-        <div class="node"><div class="t">Claude Code</div><div class="d">session-start hook</div></div>
+        <div class="node"><div class="t">Claude Code</div><div class="d">hooks · skill · agent</div></div>
         <div class="node"><div class="t">Cursor</div><div class="d">reads .cursorrules</div></div>
         <div class="node"><div class="t">GitHub Copilot</div><div class="d">copilot-instructions.md</div></div>
         <div class="node"><div class="t">Windsurf</div><div class="d">.windsurfrules</div></div>
       </div>
     </div>
     <div class="flowarrow">▲ &nbsp; read / write &nbsp; ▼</div>
-    <div class="layer transport"><span class="lname">Transports — same six tools everywhere</span>
+    <div class="layer transport"><span class="lname">Transports — same memory everywhere</span>
       <div class="nodes">
         <div class="node"><div class="t">MCP server</div><div class="d">amp_* · infernoflow_*</div></div>
         <div class="node"><div class="t">VS Code LMT</div><div class="d">#amp_write / #amp_read</div></div>
@@ -243,6 +245,8 @@
         <div class="node"><div class="t">Learning profile</div><div class="d">lib/learning/*</div></div>
         <div class="node"><div class="t">Git drift</div><div class="d">lib/git/*</div></div>
         <div class="node"><div class="t">Clean-tree policy</div><div class="d">cleanTree.mjs</div></div>
+        <div class="node"><div class="t">Memory view</div><div class="d">memoryView.mjs: ranking, staleness, resume</div></div>
+        <div class="node"><div class="t">Maintenance</div><div class="d">maintenance.mjs</div></div>
       </div>
     </div>
     <div class="flowarrow">▲ &nbsp; &nbsp; ▼</div>
@@ -255,7 +259,7 @@
       </div>
     </div>
   </div>
-  <div class="callout">The same six <code>amp_*</code> tools are exposed over MCP, VS Code LMT <i>and</i> as CLI aliases — <strong>one product, one disk file, multiple transports</strong>. Pick whichever fits your setup; all paths write to the same <code>.ai-memory/</code>.</div>
+  <div class="callout">The same <code>amp_*</code> tools are exposed over MCP, VS Code LMT <i>and</i> as CLI aliases — <strong>one product, one disk file, multiple transports</strong>. Pick whichever fits your setup; all paths write to the same <code>.ai-memory/</code>.</div>
 </div></section>
 
 <!-- LOOP -->
@@ -350,7 +354,7 @@
 <section id="data"><div class="wrap">
   <p class="kicker">Data model — the AMP protocol</p>
   <h2>Everything is a typed AMP entry</h2>
-  <p class="lead">AMP (Agent Memory Protocol) is the vendor-neutral format at the core. One append-only JSONL record per memory, with a stable id so any AMP-Full client can reference it.</p>
+  <p class="lead">AMP (AI Memory Protocol) is the vendor-neutral format at the core. One append-only JSONL record per memory, with a stable id so any AMP-Full client can reference it.</p>
   <div class="grid2">
     <div>
       <h3>Entry schema</h3>
@@ -375,13 +379,13 @@
           <tr><td><code>gotcha</code></td><td>An invariant that bit you</td><td style="color:var(--green)">never</td></tr>
           <tr><td><code>decision</code></td><td>A standing choice + rationale</td><td style="color:var(--green)">never</td></tr>
           <tr><td><code>pattern</code></td><td>How things are done here</td><td style="color:var(--green)">never</td></tr>
-          <tr><td><code>bookmark</code></td><td>Named session resume point</td><td style="color:var(--green)">never</td></tr>
+          <tr><td><code>preference</code></td><td>A durable user preference (personal, <code>global.jsonl</code>)</td><td style="color:var(--green)">never</td></tr>
           <tr><td><code>attempt</code></td><td>A fix that failed</td><td style="color:var(--yellow)">30d</td></tr>
           <tr><td><code>note</code></td><td>Transient observation</td><td style="color:var(--yellow)">30d</td></tr>
           <tr><td><code>detection</code></td><td>Auto-detected signal</td><td style="color:var(--yellow)">30d</td></tr>
         </tbody>
       </table>
-      <p style="font-size:15px;color:var(--dim)">Rotation archives stale <code>note</code>/<code>attempt</code>/<code>detection</code> to <code>archive/</code> — invisible to reads, still on disk. The four durable types are the knowledge you logged infernoflow <i>for</i>.</p>
+      <p style="font-size:15px;color:var(--dim)">Rotation archives stale <code>note</code>/<code>attempt</code>/<code>detection</code> to <code>archive/</code> — invisible to reads, still on disk. The durable types are the knowledge you logged infernoflow <i>for</i>. Bookmarks are notes tagged <code>bookmark</code> and are never aged out either.</p>
     </div>
   </div>
   <h3>Two-tier bodies</h3>
@@ -399,6 +403,8 @@
 │   ├── main.jsonl          <span class="c">project truths (git-tracked)</span>
 │   └── feature-auth.jsonl  <span class="c">branch work (git-tracked)</span>
 ├── details.jsonl           <span class="c">tier-2 bodies (on demand)</span>
+├── details.local.jsonl     <span class="c">transcript snapshots (local only)</span>
+├── sessions.jsonl          <span class="c">automatic resume points (local only)</span>
 ├── <span class="b">archive/</span>
 │   └── sessions-2026-07.jsonl  <span class="c">rotated-out</span>
 ├── global.jsonl            <span class="c">personal prefs (gitignored)</span>
@@ -431,15 +437,14 @@
     </tbody>
   </table>
   <h3>MCP tool surface</h3>
-  <p>When the server is wired, the agent calls these directly. The seven <code>amp_*</code> tools follow the AMP MCP spec — vendor-neutral — and are mirrored as CLI aliases name-for-name.</p>
+  <p>When the server is wired, the agent calls these directly. Five <code>amp_*</code> tools come straight from the AMP MCP spec; <code>amp_bookmark</code> and <code>amp_resume</code> add resume points and "where were we?". The CLI covers the same actions (<code>log</code>, <code>ask</code>, <code>bookmark</code>, <code>resume</code>, <code>switch</code>).</p>
   <div>
     <span class="tag">amp_write</span><span class="tag">amp_read</span><span class="tag">amp_search</span>
     <span class="tag">amp_bookmark</span><span class="tag">amp_handoff</span><span class="tag">amp_health</span><span class="tag">amp_resume</span>
     <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_status</span>
-    <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_check</span>
-    <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_context</span>
     <span class="tag" style="border-color:rgba(88,166,255,.4);color:var(--cyan)">infernoflow_git_drift</span>
   </div>
+  <p style="font-size:15px;color:var(--dim)"><code>infernoflow_check</code> and <code>infernoflow_context</code> are added only in full mode (Capability Contracts). Only the read tools are pre-approved; tools that write memory ask first.</p>
 </div></section>
 
 <!-- INJECTION -->
@@ -474,12 +479,41 @@
   <p class="kicker">Capture pipeline</p>
   <h2>The AI writes it — with a deterministic backstop</h2>
   <div class="grid3">
-    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">1 · AI-driven</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A protocol block in the rule files teaches the agent <i>when</i> to call <code>amp_write</code>: on a gotcha hit, a decision, a failed fix, a pattern.</p></div>
-    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">2 · Hook backstop</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A Cursor <code>beforeSubmitPrompt</code> hook scans your prompt for triggers (<code>!!</code>, <code>retry</code>, <code>not working</code>, <code>bookmark this</code>) and writes the entry deterministically when the AI doesn't.</p></div>
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">1 · AI-driven</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A protocol block in the rule files (and on Claude Code, the <code>infernoflow-memory</code> skill) teaches the agent <i>when</i> to call <code>amp_write</code>: on a gotcha hit, a decision, a failed fix, a pattern.</p></div>
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">2 · Hook backstop</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A prompt hook (Claude Code <code>UserPromptSubmit</code>, Cursor <code>beforeSubmitPrompt</code>) scans what you type for triggers (<code>!!</code>, <code>retry</code>, <code>not working</code>, <code>bookmark this</code>) and writes the entry deterministically when the AI doesn't. Text you didn't type, like subagent replies or tool output, is ignored.</p></div>
     <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">3 · Transcript distillation</h4><p style="margin:0;color:var(--dim);font-size:15.5px">A <code>bookmark</code> with no note reads Claude Code's on-disk transcript, distills the last ~40 turns to markdown, stores it as context on this machine only (gitignored) — <i>no model call</i>.</p></div>
   </div>
   <div class="callout">Known secret formats (API keys and tokens, JWTs, private keys, credentials in URLs, <code>password=</code>-style values) are <b>redacted</b> at the AMP writer and stored as <code>[REDACTED:&lt;kind&gt;]</code>. The filter is pattern-based — review <code>.ai-memory/</code> diffs like code.</div>
-  <div class="callout">On <b>Claude Code</b>, an installed <code>infernoflow-memory</code> skill makes capture proactive out of the box, and a <code>memory-keeper</code> subagent can be delegated to sweep a session and log what matters. Cursor &amp; Copilot get the same &ldquo;when to capture&rdquo; guidance through their rule-file protocol + MCP.</div>
+</div></section>
+
+<!-- CLAUDE CODE: SKILL, AGENT, HOOKS -->
+<section id="claude-code"><div class="wrap">
+  <p class="kicker">Claude Code</p>
+  <h2>A skill, an agent and two session hooks</h2>
+  <p class="lead"><code>infernoflow setup</code> installs these into the project's <code>.claude/</code> folder. They are what make memory work without you asking for it.</p>
+  <div class="grid3">
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">Skill · <code>infernoflow-memory</code></h4><p style="margin:0;color:var(--dim);font-size:15.5px">Loads when work starts in a repo that has <code>.ai-memory/</code>. It tells the AI when to log (a gotcha, a decision with its <i>because</i>, a dead end, a lasting user preference, "bookmark this") and how: the MCP tools when they are available, the CLI otherwise. Memory is treated as information to verify, not instructions, and entries marked <i>may be stale</i> get re-checked.</p></div>
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">Agent · <code>memory-keeper</code></h4><p style="margin:0;color:var(--dim);font-size:15.5px">Delegate to it at the end of a session or when you say "save what we learned". It reads the session transcript itself, checks what is already in memory so it doesn't duplicate, logs only what can't be read from the code and the diff, sends each item to the right repo, and drops a resume bookmark. A hook limits it to single <code>infernoflow</code> commands; it never touches application code.</p></div>
+    <div class="box"><h4 style="margin:0 0 6px;color:var(--orange)">Session hooks</h4><p style="margin:0;color:var(--dim);font-size:15.5px"><b>SessionStart</b> prints fresh memory into every new session: the latest bookmark, open dead ends, recent decisions and gotchas, uncommitted changes. <b>SessionEnd</b> leaves a local resume point (your last request, uncommitted files, open dead ends); the newest five are kept and never committed. <code>infernoflow resume</code> or <code>amp_resume</code> answers "where were we?" in one call.</p></div>
+  </div>
+  <div class="callout">Cursor &amp; Copilot get the same "when to capture" guidance through their rule-file protocol + MCP.</div>
+</div></section>
+
+<!-- MEMORY HYGIENE -->
+<section id="hygiene"><div class="wrap">
+  <p class="kicker">Memory hygiene</p>
+  <h2>Memory that stays worth reading</h2>
+  <p class="lead">Memory that is wrong or noisy is worse than none. infernoflow marks what may be outdated, cleans out noise, and tells you when it is time to tidy up.</p>
+  <table>
+    <thead><tr><th>Problem</th><th>What infernoflow does</th><th>Command</th></tr></thead>
+    <tbody>
+      <tr><td>An entry is about a file that changed since</td><td>Each file-specific entry records the commit it was written at. If the file changed, the entry is shown as <i>may be stale</i>. Resolving it removes it from AI context; it stays in history.</td><td style="white-space:nowrap"><code>resolve &lt;id&gt;</code></td></tr>
+      <tr><td>Noise piles up</td><td>Commit-subject notes, exact duplicates and machine text the prompt hooks caught are archived, then removed. Automatic resume points are cleaned too.</td><td style="white-space:nowrap"><code>curate --apply</code></td></tr>
+      <tr><td>Old notes add up</td><td>Notes, attempts and detections older than 30 days move to <code>archive/</code>. Gotchas, decisions, patterns and bookmarks are never aged out.</td><td style="white-space:nowrap"><code>prune --apply</code></td></tr>
+    </tbody>
+  </table>
+  <h3>Maintenance hints</h3>
+  <p><code>status</code>, <code>recap</code> and the session start point out when any of the above is worth doing and name the command. The session-start hint appears at most once a day, and the AI is told to mention it and ask before running anything. Set <code>"maintenance"</code> in <code>amp.json</code> to <code>"suggest"</code> (default), <code>"auto"</code> (noise and old notes are handled once a day, archived first; stale entries are only ever suggested, because a person decides those) or <code>"off"</code>.</p>
 </div></section>
 
 <!-- CONTRACTS -->
@@ -521,12 +555,14 @@
   <h2>Components &amp; build</h2>
   <div class="grid2">
     <div>
-      <pre><span class="k">bin/</span>infernoflow.mjs      <span class="c">CLI router (~22 verbs)</span>
+      <pre><span class="k">bin/</span>infernoflow.mjs      <span class="c">CLI router (29 commands)</span>
 <span class="k">lib/</span>
-├── commands/           <span class="c">log, ask, switch, bookmark,</span>
-│                       <span class="c">context, check, doctor, …</span>
+├── commands/           <span class="c">log, ask, resume, bookmark,</span>
+│                       <span class="c">curate, hook, doctor, …</span>
 ├── amp/io.mjs          <span class="c">AMP read/write core</span>
 ├── ruleFiles.mjs       <span class="c">injection / refresh</span>
+├── memoryView.mjs      <span class="c">ranking, staleness, resume</span>
+├── maintenance.mjs     <span class="c">maintenance hints / auto</span>
 ├── learning/           <span class="c">profile, observe, adapt</span>
 ├── git/                <span class="c">drift detection</span>
 ├── ai/                 <span class="c">optional provider router</span>
@@ -535,7 +571,7 @@
 └── ui/                 <span class="c">terminal output + prompts</span>
 <span class="k">vscode-extension/</span>      <span class="c">companion extension</span>
 <span class="k">action/</span>               <span class="c">GitHub Action (PR memory check)</span>
-<span class="k">templates/</span>            <span class="c">hooks, MCP server, CI</span>
+<span class="k">templates/</span>            <span class="c">hooks, skill, agent, CI</span>
 <span class="k">dist/</span>                 <span class="c">esbuild output (committed)</span></pre>
     </div>
     <div>
@@ -543,7 +579,7 @@
       <ul class="clean">
         <li><strong>Bundler:</strong> <code>node build.mjs</code> — esbuild, single pass into <code>dist/</code>.</li>
         <li><strong>Zero runtime deps:</strong> Node ≥ 18, no <code>postinstall</code>. <code>npm i -g</code> only copies files.</li>
-        <li><strong>Tests:</strong> <code>npm test</code> runs the vitest suite (300+ tests, including security regressions).</li>
+        <li><strong>Tests:</strong> <code>npm test</code> runs the vitest suite (370 tests, including security regressions).</li>
         <li><strong>Extension:</strong> window-only in 0.7.9+ — the CLI is the single canonical writer of rule files, so there's no race.</li>
       </ul>
       <h3>VS Code extension surface</h3>
@@ -576,7 +612,7 @@
   <h2>What holds it together</h2>
   <div class="grid2">
     <div class="pcard"><h4>🔒 Local-first, zero-dep</h4><p>Plain files, no service, no runtime dependencies. The moat is that it's boring infrastructure — set once, forget, like <code>.gitignore</code>.</p></div>
-    <div class="pcard"><h4>🔌 Vendor-neutral (AMP)</h4><p>An open protocol, not a format lock. Any AMP-Full client needs only the six <code>amp_*</code> tool names.</p></div>
+    <div class="pcard"><h4>🔌 Vendor-neutral (AMP)</h4><p>An open protocol, not a format lock. Any AMP-Full client needs only the <code>amp_*</code> tool names.</p></div>
     <div class="pcard"><h4>⚡ Transparent automation</h4><p>One install, everything wired — no separate setup steps, no manual rebuilds, no "now go install the other half".</p></div>
     <div class="pcard"><h4>🎯 It feeds agents, it isn't one</h4><p>infernoflow never runs your coding agent. It's the memory Cursor / Claude / Copilot read — that's the wedge, and it's deliberate.</p></div>
   </div>
